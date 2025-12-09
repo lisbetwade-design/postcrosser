@@ -1,0 +1,99 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800;9..144,900&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Cream background - #FAF7F2 */
+    --background: 40 33% 96%;
+    --foreground: 220 26% 14%;
+
+    /* Card - slightly warmer white */
+    --card: 40 40% 98%;
+    --card-foreground: 220 26% 14%;
+
+    --popover: 40 40% 98%;
+    --popover-foreground: 220 26% 14%;
+
+    /* Soft terracotta - #E8A598 */
+    --primary: 10 60% 75%;
+    --primary-foreground: 220 26% 14%;
+
+    /* Sage green - #A8B5A0 */
+    --secondary: 100 14% 67%;
+    --secondary-foreground: 220 26% 14%;
+
+    /* Muted cream */
+    --muted: 40 20% 92%;
+    --muted-foreground: 220 10% 46%;
+
+    /* Muted navy - #4A5568 */
+    --accent: 220 14% 35%;
+    --accent-foreground: 40 33% 96%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 40 33% 96%;
+
+    --border: 30 20% 88%;
+    --input: 30 20% 88%;
+    --ring: 10 60% 75%;
+
+    --radius: 0.75rem;
+
+    /* Custom colors */
+    --cream: 40 33% 96%;
+    --terracotta: 10 60% 75%;
+    --sage: 100 14% 67%;
+    --navy: 220 14% 35%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html, body, #root {
+    min-height: 100vh;
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Manrope', sans-serif;
+    background-image: url('/unsplash_vS3idIiYxX0.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Fraunces', serif;
+  }
+  code, .mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'Fraunces', serif;
+  }
+  .font-body {
+    font-family: 'Manrope', sans-serif;
+  }
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .paper-texture {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    background-blend-mode: overlay;
+  }
+  .soft-shadow {
+    box-shadow: 0 4px 20px rgba(232, 165, 152, 0.12);
+  }
+  .soft-shadow-lg {
+    box-shadow: 0 8px 30px rgba(232, 165, 152, 0.15);
+  }
+}
