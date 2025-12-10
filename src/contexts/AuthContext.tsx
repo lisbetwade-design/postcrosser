@@ -199,49 +199,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw error;
     }
 
-    if (data.user) {
-      // Manually create profile entry (trigger may not work due to RLS)
-      // Use upsert to handle case where trigger already created it
-      const { error: profileError } = await supabase
+    if (!data.user) {
+      throw new Error('User creation failed - no user data returned');
+    }
+
+    // Wait a bit for trigger to potentially create profile, then create manually if needed
+    // This handles cases where the trigger fails or RLS blocks it
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Try to create profile manually (upsert handles both cases)
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: data.user.id,
+        email: data.user.email || email,
+      }, {
+        onConflict: 'id',
+      });
+
+    if (profileError) {
+      console.error('Error creating profile:', profileError);
+      // Check if profile was created by trigger
+      const { data: existingProfile, error: loadError } = await supabase
         .from('profiles')
-        .upsert({
-          id: data.user.id,
-          email: data.user.email || email,
-        }, {
-          onConflict: 'id',
-        });
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
 
-      if (profileError) {
-        console.error('Error creating profile:', profileError);
-        // If profile creation fails, try to load it (might have been created by trigger)
-        const { data: existingProfile, error: loadError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
-
-        if (loadError || !existingProfile) {
-          throw new Error(`Database error saving new user: ${profileError.message || 'Failed to create user profile'}`);
-        }
+      if (loadError || !existingProfile) {
+        // If we still can't find/create the profile, throw a user-friendly error
+        throw new Error('Failed to create user profile. Please contact support if this issue persists.');
       }
+    }
 
-      // If session exists (email confirmation disabled), load the profile
-      if (data.session) {
-        await loadUserProfile(data.user.id);
-      } else {
-        // Email confirmation required - set user state from auth data
-        const newUser: User = {
-          id: data.user.id,
-          email: data.user.email || email,
-          name: '',
-          bio: '',
-          photoUrl: '',
-          interests: [],
-          createdAt: new Date(),
-        };
-        setUser(newUser);
-        setOnboardingStep('interests');
-      }
+    // If session exists (email confirmation disabled), load the profile
+    if (data.session) {
+      await loadUserProfile(data.user.id);
+    } else {
+      // Email confirmation required - set user state from auth data
+      const newUser: User = {
+        id: data.user.id,
+        email: data.user.email || email,
+        name: '',
+        bio: '',
+        photoUrl: '',
+        interests: [],
+        createdAt: new Date(),
+      };
+      setUser(newUser);
+      setOnboardingStep('interests');
     }
   };
 
