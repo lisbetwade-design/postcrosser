@@ -1,10 +1,9 @@
 import { useState, useRef, ChangeEvent } from 'react';
-import { Upload, Home, User, FolderOpen, LogOut } from 'lucide-react';
+import { Upload, Home, User, FolderOpen, LogOut, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import type { Postcard } from '@/types';
 
 // Feather pen icon
 const FEATHER_ICON = 'https://storage.googleapis.com/tempo-image-previews/figma-exports%2Fuser_36OQnLpjYZWEuF92Ed0glKiLSBH-1765311281940-node-29%3A1295-1765311281571.png';
@@ -14,22 +13,42 @@ const LOGOUT_ICON = 'https://storage.googleapis.com/tempo-image-previews/figma-e
 
 export function PostcardCreator() {
   const navigate = useNavigate();
-  const { user, currentRecipient, addPostcard, signOut, hasUnreadPostcards } = useAuth();
+  const { user, currentRecipient, addPostcard, signOut, hasUnreadPostcards, uploadImage } = useAuth();
   const [message, setMessage] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isFormValid = message.trim().length > 0 && imageUrl.length > 0;
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImageUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      setIsUploading(true);
+      try {
+        // Upload to Supabase storage
+        const url = await uploadImage(file);
+        if (url) {
+          setImageUrl(url);
+        } else {
+          // Fallback to local preview
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setImageUrl(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+        }
+      } catch {
+        // Fallback to local preview
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImageUrl(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
@@ -38,26 +57,25 @@ export function PostcardCreator() {
 
     setIsSending(true);
 
-    // Simulate sending
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      await addPostcard({
+        senderId: user.id,
+        senderName: user.name,
+        recipientId: currentRecipient.id,
+        recipientName: currentRecipient.name,
+        templateId: 'custom',
+        message,
+        imageUrl,
+        stampId: 'heart',
+      });
 
-    const newPostcard: Postcard = {
-      id: crypto.randomUUID(),
-      senderId: user.id,
-      senderName: user.name,
-      recipientId: currentRecipient.id,
-      recipientName: currentRecipient.name,
-      templateId: 'custom',
-      message,
-      stampId: 'heart',
-      createdAt: new Date(),
-      sentAt: new Date(),
-    };
-
-    addPostcard(newPostcard);
-
-    // Navigate back after sending
-    navigate('/');
+      // Navigate back after sending
+      navigate('/');
+    } catch (err) {
+      console.error('Error sending postcard:', err);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const recipientName = currentRecipient?.name || '{user}';

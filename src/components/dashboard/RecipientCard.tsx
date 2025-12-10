@@ -29,9 +29,9 @@ export function RecipientCard() {
     }
   }, [currentRecipient, isRevealing]);
 
-  const handleNewRecipient = () => {
+  const handleNewRecipient = async () => {
     setIsRevealing(true);
-    assignNewRecipient();
+    await assignNewRecipient();
   };
 
   if (!currentRecipient) return null;

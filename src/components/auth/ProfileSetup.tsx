@@ -22,30 +22,54 @@ const STAMP_IMAGES = [
 const FEATHER_ICON = 'https://storage.googleapis.com/tempo-image-previews/figma-exports%2Fuser_36OQnLpjYZWEuF92Ed0glKiLSBH-1765280469309-node-9%3A509-1765280469081.png';
 
 export function ProfileSetup() {
-  const { updateUserProfile, setOnboardingStep } = useAuth();
+  const { updateUserProfile, setOnboardingStep, uploadImage } = useAuth();
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      setIsUploading(true);
+      try {
+        // Upload to Supabase storage
+        const url = await uploadImage(file);
+        if (url) {
+          setPhotoUrl(url);
+        } else {
+          // Fallback to local preview if upload fails
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setPhotoUrl(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+        }
+      } catch {
+        // Fallback to local preview
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPhotoUrl(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
   const handleComplete = async () => {
     if (name.trim()) {
       setIsLoading(true);
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      updateUserProfile(name, bio, photoUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80');
-      setIsLoading(false);
+      try {
+        await updateUserProfile(name, bio, photoUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80');
+      } catch (err) {
+        console.error('Error updating profile:', err);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 

@@ -40,8 +40,8 @@ export function SignUpForm() {
       } else {
         await signUp(email, password);
       }
-    } catch {
-      setError('Something went wrong. Please try again.');
+    } catch (err: any) {
+      setError(err?.message || 'Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
     }

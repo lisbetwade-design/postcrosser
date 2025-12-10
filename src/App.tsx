@@ -8,9 +8,19 @@ import { Dashboard } from "@/components/dashboard/Dashboard";
 import { PostcardCreator } from "@/components/postcard/PostcardCreator";
 import { Collection } from "@/components/collection/Collection";
 import { Profile } from "@/components/profile/Profile";
+import { Loader2 } from "lucide-react";
 
 function AppContent() {
-  const { isAuthenticated, onboardingStep, user } = useAuth();
+  const { isAuthenticated, onboardingStep, user, loading } = useAuth();
+
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background paper-texture">
+        <Loader2 className="w-8 h-8 animate-spin text-[#322a2a]" />
+      </div>
+    );
+  }
 
   // Show onboarding flow if not fully authenticated
   if (!isAuthenticated) {
