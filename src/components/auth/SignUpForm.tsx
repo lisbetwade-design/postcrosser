@@ -38,7 +38,7 @@ export function SignUpForm() {
       if (isSignIn) {
         await signIn(email, password);
       } else {
-        await signUp(email, password);
+        await signUp(email, password, name || undefined);
       }
     } catch (err: any) {
       setError(err?.message || 'Something went wrong. Please try again.');
