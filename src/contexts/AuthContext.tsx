@@ -43,6 +43,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true);
   const isSigningUpRef = useRef<boolean>(false);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('[AuthContext] State update:', {
+      user: user ? { id: user.id, email: user.email, name: user.name } : null,
+      onboardingStep,
+      loading,
+      isAuthenticated: !!user && onboardingStep === 'complete',
+    });
+  }, [user, onboardingStep, loading]);
+
   // Check for unread postcards
   const checkUnreadPostcards = useCallback(async (userId: string) => {
     try {
@@ -97,12 +107,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Load user profile from database
   const loadUserProfile = useCallback(async (userId: string): Promise<boolean> => {
+    console.log('[AuthContext] loadUserProfile called for userId:', userId);
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
+
+      console.log('[AuthContext] Profile query result:', { profile: profile ? 'found' : 'not found', error });
 
       if (profile && !error) {
         const loadedUser: User = {
@@ -114,70 +127,86 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           interests: (profile.interests || []) as InterestTag[],
           createdAt: new Date(profile.created_at),
         };
+        console.log('[AuthContext] Setting user:', { id: loadedUser.id, email: loadedUser.email, name: loadedUser.name, interestsCount: loadedUser.interests.length });
         setUser(loadedUser);
         
         // Determine onboarding step based on profile completeness
         if (!profile.interests || profile.interests.length === 0) {
+          console.log('[AuthContext] No interests found, setting step to interests');
           setOnboardingStep('interests');
         } else if (!profile.name) {
+          console.log('[AuthContext] No name found, setting step to profile');
           setOnboardingStep('profile');
         } else {
+          console.log('[AuthContext] Profile complete, setting step to complete');
           setOnboardingStep('complete');
           // Load recipient and check postcards in parallel, don't await
-          assignNewRecipient(userId).catch(err => console.error('Error assigning recipient:', err));
-          checkUnreadPostcards(userId).catch(err => console.error('Error checking postcards:', err));
+          assignNewRecipient(userId).catch(err => console.error('[AuthContext] Error assigning recipient:', err));
+          checkUnreadPostcards(userId).catch(err => console.error('[AuthContext] Error checking postcards:', err));
         }
         return true;
       }
       
       // Profile not found or error loading
       if (error) {
-        console.error('Error loading user profile:', error);
+        console.error('[AuthContext] Error loading user profile:', error);
       }
       return false;
     } catch (error) {
-      console.error('Error in loadUserProfile:', error);
+      console.error('[AuthContext] Error in loadUserProfile:', error);
       return false;
     }
   }, [assignNewRecipient, checkUnreadPostcards]);
 
   // Listen for auth state changes
   useEffect(() => {
+    console.log('[AuthContext] Setting up auth state listener');
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[AuthContext] Auth state change:', { event, hasSession: !!session, userId: session?.user?.id, isSigningUp: isSigningUpRef.current });
       try {
         // Skip SIGNED_IN event during signup - we handle it in signUp function
         if (event === 'SIGNED_IN' && isSigningUpRef.current) {
+          console.log('[AuthContext] Skipping SIGNED_IN event during signup');
           setLoading(false);
           return;
         }
         
         if (session?.user) {
+          console.log('[AuthContext] Session found, loading profile for:', session.user.id);
           await loadUserProfile(session.user.id);
         } else {
+          console.log('[AuthContext] No session, resetting to signup');
           setUser(null);
           setOnboardingStep('signup');
         }
       } catch (error) {
-        console.error('Error in auth state change:', error);
+        console.error('[AuthContext] Error in auth state change:', error);
       } finally {
+        console.log('[AuthContext] Setting loading to false');
         setLoading(false);
       }
     });
 
     // Check initial session
+    console.log('[AuthContext] Checking initial session');
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      console.log('[AuthContext] Initial session check:', { hasSession: !!session, userId: session?.user?.id });
       try {
         if (session?.user) {
           await loadUserProfile(session.user.id);
         }
       } catch (error) {
-        console.error('Error loading initial session:', error);
+        console.error('[AuthContext] Error loading initial session:', error);
       } finally {
+        console.log('[AuthContext] Initial session check complete, setting loading to false');
         setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      console.log('[AuthContext] Cleaning up auth state listener');
+      subscription.unsubscribe();
+    };
   }, [loadUserProfile]);
 
   // Load postcards for user
@@ -240,8 +269,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user?.id]);
 
   const signUp = async (email: string, password: string) => {
+    console.log('[AuthContext] signUp called for email:', email);
     // Set flag to prevent auth state change listener from interfering
     isSigningUpRef.current = true;
+    console.log('[AuthContext] Set isSigningUpRef to true');
     
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -289,12 +320,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // If session exists (email confirmation disabled), load the profile
       if (data.session) {
+        console.log('[AuthContext] Session exists, loading profile');
         // Ensure loading is set to false so UI can render
         setLoading(false);
         
         // Try to load profile, but if it fails, set user state manually
         const profileLoaded = await loadUserProfile(data.user.id);
+        console.log('[AuthContext] Profile loaded:', profileLoaded);
         if (!profileLoaded) {
+          console.log('[AuthContext] Profile load failed, setting user state manually');
           // Profile might not exist yet or failed to load, set user state manually
           const newUser: User = {
             id: data.user.id,
@@ -309,6 +343,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setOnboardingStep('interests');
         }
       } else {
+        console.log('[AuthContext] No session (email confirmation required), setting user state manually');
         // Email confirmation required - set user state from auth data
         setLoading(false);
         const newUser: User = {

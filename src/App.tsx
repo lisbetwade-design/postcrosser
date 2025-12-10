@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SignUpForm } from "@/components/auth/SignUpForm";
@@ -13,8 +13,20 @@ import { Loader2 } from "lucide-react";
 function AppContent() {
   const { isAuthenticated, onboardingStep, user, loading } = useAuth();
 
+  // Debug logging
+  useEffect(() => {
+    console.log('[App] Render state:', {
+      loading,
+      isAuthenticated,
+      onboardingStep,
+      hasUser: !!user,
+      userId: user?.id,
+    });
+  }, [loading, isAuthenticated, onboardingStep, user]);
+
   // Show loading state while checking auth
   if (loading) {
+    console.log('[App] Showing loading spinner');
     return (
       <div className="min-h-screen flex items-center justify-center bg-background paper-texture">
         <Loader2 className="w-8 h-8 animate-spin text-[#322a2a]" />
@@ -24,6 +36,7 @@ function AppContent() {
 
   // Show onboarding flow if not fully authenticated
   if (!isAuthenticated) {
+    console.log('[App] Not authenticated, showing onboarding step:', onboardingStep);
     return (
       <>
         {onboardingStep === 'signup' && <SignUpForm />}
@@ -47,6 +60,7 @@ function AppContent() {
     );
   }
 
+  console.log('[App] Authenticated, showing routes');
   return (
     <>
       <Routes>
