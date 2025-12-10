@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import type { User, OnboardingStep, InterestTag, Postcard, Recipient } from '@/types';
 import { supabase } from '@/lib/supabase';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
@@ -41,10 +41,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentRecipient, setCurrentRecipient] = useState<Recipient | null>(null);
   const [hasUnreadPostcards, setHasUnreadPostcards] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+  const isSigningUpRef = useRef<boolean>(false);
 
   // Listen for auth state changes
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Skip SIGNED_IN event during signup - we handle it in signUp function
+      if (event === 'SIGNED_IN' && isSigningUpRef.current) {
+        setLoading(false);
+        return;
+      }
+      
       if (session?.user) {
         await loadUserProfile(session.user.id);
       } else {
@@ -196,55 +203,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user?.id]);
 
   const signUp = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (error) {
-      console.error('Sign up error:', error);
-      throw error;
-    }
-
-    if (!data.user) {
-      throw new Error('User creation failed - no user data returned');
-    }
-
-    // Wait a bit for trigger to potentially create profile, then create manually if needed
-    // This handles cases where the trigger fails or RLS blocks it
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // Try to create profile manually (upsert handles both cases)
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({
-        id: data.user.id,
-        email: data.user.email || email,
-      }, {
-        onConflict: 'id',
+    // Set flag to prevent auth state change listener from interfering
+    isSigningUpRef.current = true;
+    
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
       });
 
-    if (profileError) {
-      console.error('Error creating profile:', profileError);
-      // Check if profile was created by trigger
-      const { data: existingProfile, error: loadError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-
-      if (loadError || !existingProfile) {
-        // If we still can't find/create the profile, throw a user-friendly error
-        throw new Error('Failed to create user profile. Please contact support if this issue persists.');
+      if (error) {
+        console.error('Sign up error:', error);
+        throw error;
       }
-    }
 
-    // If session exists (email confirmation disabled), load the profile
-    if (data.session) {
-      // Try to load profile, but if it fails, set user state manually
-      const profileLoaded = await loadUserProfile(data.user.id);
-      if (!profileLoaded) {
-        // Profile might not exist yet or failed to load, set user state manually
+      if (!data.user) {
+        throw new Error('User creation failed - no user data returned');
+      }
+
+      // Wait a bit for trigger to potentially create profile, then create manually if needed
+      // This handles cases where the trigger fails or RLS blocks it
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Try to create profile manually (upsert handles both cases)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: data.user.id,
+          email: data.user.email || email,
+        }, {
+          onConflict: 'id',
+        });
+
+      if (profileError) {
+        console.error('Error creating profile:', profileError);
+        // Check if profile was created by trigger
+        const { data: existingProfile, error: loadError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        if (loadError || !existingProfile) {
+          // If we still can't find/create the profile, throw a user-friendly error
+          throw new Error('Failed to create user profile. Please contact support if this issue persists.');
+        }
+      }
+
+      // If session exists (email confirmation disabled), load the profile
+      if (data.session) {
+        // Ensure loading is set to false so UI can render
+        setLoading(false);
+        
+        // Try to load profile, but if it fails, set user state manually
+        const profileLoaded = await loadUserProfile(data.user.id);
+        if (!profileLoaded) {
+          // Profile might not exist yet or failed to load, set user state manually
+          const newUser: User = {
+            id: data.user.id,
+            email: data.user.email || email,
+            name: '',
+            bio: '',
+            photoUrl: '',
+            interests: [],
+            createdAt: new Date(),
+          };
+          setUser(newUser);
+          setOnboardingStep('interests');
+        }
+      } else {
+        // Email confirmation required - set user state from auth data
+        setLoading(false);
         const newUser: User = {
           id: data.user.id,
           email: data.user.email || email,
@@ -257,19 +286,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(newUser);
         setOnboardingStep('interests');
       }
-    } else {
-      // Email confirmation required - set user state from auth data
-      const newUser: User = {
-        id: data.user.id,
-        email: data.user.email || email,
-        name: '',
-        bio: '',
-        photoUrl: '',
-        interests: [],
-        createdAt: new Date(),
-      };
-      setUser(newUser);
-      setOnboardingStep('interests');
+    } finally {
+      // Clear flag after signup completes (with delay to catch any delayed auth events)
+      setTimeout(() => {
+        isSigningUpRef.current = false;
+      }, 1000);
     }
   };
 
