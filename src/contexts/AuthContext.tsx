@@ -8,7 +8,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   onboardingStep: OnboardingStep;
   setOnboardingStep: (step: OnboardingStep) => void;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, name?: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateUserInterests: (interests: InterestTag[]) => Promise<void>;
@@ -167,7 +167,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Skip SIGNED_IN event during signup - we handle it in signUp function
         if (event === 'SIGNED_IN' && isSigningUpRef.current) {
           console.log('[AuthContext] Skipping SIGNED_IN event during signup');
-          setLoading(false);
+          // Don't set loading to false here - let signUp handle it
+          return;
+        }
+        
+        // Skip TOKEN_REFRESHED events during signup
+        if (event === 'TOKEN_REFRESHED' && isSigningUpRef.current) {
+          console.log('[AuthContext] Skipping TOKEN_REFRESHED event during signup');
           return;
         }
         
@@ -182,8 +188,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('[AuthContext] Error in auth state change:', error);
       } finally {
-        console.log('[AuthContext] Setting loading to false');
-        setLoading(false);
+        // Only set loading to false if we're not in the middle of signup
+        if (!isSigningUpRef.current) {
+          console.log('[AuthContext] Setting loading to false (not signing up)');
+          setLoading(false);
+        } else {
+          console.log('[AuthContext] Not setting loading to false (signup in progress)');
+        }
       }
     });
 
@@ -268,8 +279,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setHasUnreadPostcards(false);
   }, [user?.id]);
 
-  const signUp = async (email: string, password: string) => {
-    console.log('[AuthContext] signUp called for email:', email);
+  const signUp = async (email: string, password: string, name?: string) => {
+    console.log('[AuthContext] signUp called for email:', email, 'name:', name);
     // Set flag to prevent auth state change listener from interfering
     isSigningUpRef.current = true;
     console.log('[AuthContext] Set isSigningUpRef to true');
@@ -281,7 +292,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
-        console.error('Sign up error:', error);
+        console.error('[AuthContext] Sign up error:', error);
         throw error;
       }
 
@@ -294,17 +305,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Try to create profile manually (upsert handles both cases)
+      // Include name if provided during signup
       const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
           id: data.user.id,
           email: data.user.email || email,
+          name: name || null, // Save name if provided
         }, {
           onConflict: 'id',
         });
 
       if (profileError) {
-        console.error('Error creating profile:', profileError);
+        console.error('[AuthContext] Error creating profile:', profileError);
         // Check if profile was created by trigger
         const { data: existingProfile, error: loadError } = await supabase
           .from('profiles')
@@ -321,8 +334,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // If session exists (email confirmation disabled), load the profile
       if (data.session) {
         console.log('[AuthContext] Session exists, loading profile');
-        // Ensure loading is set to false so UI can render
-        setLoading(false);
         
         // Try to load profile, but if it fails, set user state manually
         const profileLoaded = await loadUserProfile(data.user.id);
@@ -333,23 +344,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const newUser: User = {
             id: data.user.id,
             email: data.user.email || email,
-            name: '',
+            name: name || '',
             bio: '',
             photoUrl: '',
             interests: [],
             createdAt: new Date(),
           };
           setUser(newUser);
+          // If name was provided, skip to interests, otherwise start at interests
           setOnboardingStep('interests');
         }
+        // Ensure loading is set to false after everything is done
+        console.log('[AuthContext] Signup complete, setting loading to false');
+        setLoading(false);
       } else {
         console.log('[AuthContext] No session (email confirmation required), setting user state manually');
         // Email confirmation required - set user state from auth data
-        setLoading(false);
         const newUser: User = {
           id: data.user.id,
           email: data.user.email || email,
-          name: '',
+          name: name || '',
           bio: '',
           photoUrl: '',
           interests: [],
@@ -357,12 +371,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         setUser(newUser);
         setOnboardingStep('interests');
+        // Ensure loading is set to false
+        console.log('[AuthContext] Signup complete (no session), setting loading to false');
+        setLoading(false);
       }
+    } catch (error) {
+      console.error('[AuthContext] Error in signUp:', error);
+      // Make sure loading is set to false even on error
+      setLoading(false);
+      // Clear the flag immediately on error
+      isSigningUpRef.current = false;
+      throw error;
     } finally {
       // Clear flag after signup completes (with delay to catch any delayed auth events)
       setTimeout(() => {
+        console.log('[AuthContext] Clearing isSigningUpRef');
         isSigningUpRef.current = false;
-      }, 1000);
+      }, 3000); // Increased delay to ensure auth events are handled
     }
   };
 
