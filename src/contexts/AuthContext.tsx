@@ -194,20 +194,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password,
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Sign up error:', error);
+      throw error;
+    }
 
     if (data.user) {
-      const newUser: User = {
-        id: data.user.id,
-        email,
-        name: '',
-        bio: '',
-        photoUrl: '',
-        interests: [],
-        createdAt: new Date(),
-      };
-      setUser(newUser);
-      setOnboardingStep('interests');
+      // Manually create profile entry (trigger may not work due to RLS)
+      // Use upsert to handle case where trigger already created it
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: data.user.id,
+          email: data.user.email || email,
+        }, {
+          onConflict: 'id',
+        });
+
+      if (profileError) {
+        console.error('Error creating profile:', profileError);
+        // If profile creation fails, try to load it (might have been created by trigger)
+        const { data: existingProfile, error: loadError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        if (loadError || !existingProfile) {
+          throw new Error(`Database error saving new user: ${profileError.message || 'Failed to create user profile'}`);
+        }
+      }
+
+      // If session exists (email confirmation disabled), load the profile
+      if (data.session) {
+        await loadUserProfile(data.user.id);
+      } else {
+        // Email confirmation required - set user state from auth data
+        const newUser: User = {
+          id: data.user.id,
+          email: data.user.email || email,
+          name: '',
+          bio: '',
+          photoUrl: '',
+          interests: [],
+          createdAt: new Date(),
+        };
+        setUser(newUser);
+        setOnboardingStep('interests');
+      }
     }
   };
 
