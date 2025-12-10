@@ -43,85 +43,142 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true);
   const isSigningUpRef = useRef<boolean>(false);
 
+  // Check for unread postcards
+  const checkUnreadPostcards = useCallback(async (userId: string) => {
+    try {
+      const { count } = await supabase
+        .from('postcards')
+        .select('*', { count: 'exact', head: true })
+        .eq('recipient_id', userId)
+        .eq('is_read', false);
+      
+      setHasUnreadPostcards((count || 0) > 0);
+    } catch (error) {
+      console.error('Error checking unread postcards:', error);
+    }
+  }, []);
+
+  const assignNewRecipient = useCallback(async (userId?: string) => {
+    if (!userId) {
+      const randomIndex = Math.floor(Math.random() * MOCK_RECIPIENTS.length);
+      setCurrentRecipient(MOCK_RECIPIENTS[randomIndex]);
+      return;
+    }
+
+    try {
+      // Get a random user from the database (excluding current user)
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, name, interests')
+        .neq('id', userId)
+        .not('name', 'is', null)
+        .limit(10);
+
+      if (profiles && profiles.length > 0) {
+        const randomIndex = Math.floor(Math.random() * profiles.length);
+        const profile = profiles[randomIndex];
+        setCurrentRecipient({
+          id: profile.id,
+          name: profile.name || 'Anonymous',
+          interests: (profile.interests || []) as string[],
+        });
+      } else {
+        // Fallback to mock recipients if no other users
+        const randomIndex = Math.floor(Math.random() * MOCK_RECIPIENTS.length);
+        setCurrentRecipient(MOCK_RECIPIENTS[randomIndex]);
+      }
+    } catch (error) {
+      console.error('Error assigning recipient:', error);
+      // Fallback to mock recipients on error
+      const randomIndex = Math.floor(Math.random() * MOCK_RECIPIENTS.length);
+      setCurrentRecipient(MOCK_RECIPIENTS[randomIndex]);
+    }
+  }, []);
+
+  // Load user profile from database
+  const loadUserProfile = useCallback(async (userId: string): Promise<boolean> => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (profile && !error) {
+        const loadedUser: User = {
+          id: profile.id,
+          email: profile.email,
+          name: profile.name || '',
+          bio: profile.bio || '',
+          photoUrl: profile.photo_url || '',
+          interests: (profile.interests || []) as InterestTag[],
+          createdAt: new Date(profile.created_at),
+        };
+        setUser(loadedUser);
+        
+        // Determine onboarding step based on profile completeness
+        if (!profile.interests || profile.interests.length === 0) {
+          setOnboardingStep('interests');
+        } else if (!profile.name) {
+          setOnboardingStep('profile');
+        } else {
+          setOnboardingStep('complete');
+          // Load recipient and check postcards in parallel, don't await
+          assignNewRecipient(userId).catch(err => console.error('Error assigning recipient:', err));
+          checkUnreadPostcards(userId).catch(err => console.error('Error checking postcards:', err));
+        }
+        return true;
+      }
+      
+      // Profile not found or error loading
+      if (error) {
+        console.error('Error loading user profile:', error);
+      }
+      return false;
+    } catch (error) {
+      console.error('Error in loadUserProfile:', error);
+      return false;
+    }
+  }, [assignNewRecipient, checkUnreadPostcards]);
+
   // Listen for auth state changes
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // Skip SIGNED_IN event during signup - we handle it in signUp function
-      if (event === 'SIGNED_IN' && isSigningUpRef.current) {
+      try {
+        // Skip SIGNED_IN event during signup - we handle it in signUp function
+        if (event === 'SIGNED_IN' && isSigningUpRef.current) {
+          setLoading(false);
+          return;
+        }
+        
+        if (session?.user) {
+          await loadUserProfile(session.user.id);
+        } else {
+          setUser(null);
+          setOnboardingStep('signup');
+        }
+      } catch (error) {
+        console.error('Error in auth state change:', error);
+      } finally {
         setLoading(false);
-        return;
       }
-      
-      if (session?.user) {
-        await loadUserProfile(session.user.id);
-      } else {
-        setUser(null);
-        setOnboardingStep('signup');
-      }
-      setLoading(false);
     });
 
     // Check initial session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        await loadUserProfile(session.user.id);
+      try {
+        if (session?.user) {
+          await loadUserProfile(session.user.id);
+        }
+      } catch (error) {
+        console.error('Error loading initial session:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
-
-  // Load user profile from database
-  const loadUserProfile = async (userId: string): Promise<boolean> => {
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    if (profile && !error) {
-      const loadedUser: User = {
-        id: profile.id,
-        email: profile.email,
-        name: profile.name || '',
-        bio: profile.bio || '',
-        photoUrl: profile.photo_url || '',
-        interests: (profile.interests || []) as InterestTag[],
-        createdAt: new Date(profile.created_at),
-      };
-      setUser(loadedUser);
-      
-      // Determine onboarding step based on profile completeness
-      if (!profile.interests || profile.interests.length === 0) {
-        setOnboardingStep('interests');
-      } else if (!profile.name) {
-        setOnboardingStep('profile');
-      } else {
-        setOnboardingStep('complete');
-        await assignNewRecipient();
-        await checkUnreadPostcards(userId);
-      }
-      return true;
-    }
-    
-    // Profile not found or error loading
-    if (error) {
-      console.error('Error loading user profile:', error);
-    }
-    return false;
-  };
-
-  // Check for unread postcards
-  const checkUnreadPostcards = async (userId: string) => {
-    const { count } = await supabase
-      .from('postcards')
-      .select('*', { count: 'exact', head: true })
-      .eq('recipient_id', userId)
-      .eq('is_read', false);
-    
-    setHasUnreadPostcards((count || 0) > 0);
-  };
+  }, [loadUserProfile]);
 
   // Load postcards for user
   const loadPostcards = useCallback(async (userId: string) => {
@@ -160,35 +217,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user?.id, onboardingStep, loadPostcards]);
 
-  const assignNewRecipient = useCallback(async () => {
+  // Public assignNewRecipient function (uses current user)
+  const assignNewRecipientPublic = useCallback(async () => {
     if (!user?.id) {
       const randomIndex = Math.floor(Math.random() * MOCK_RECIPIENTS.length);
       setCurrentRecipient(MOCK_RECIPIENTS[randomIndex]);
       return;
     }
-
-    // Get a random user from the database (excluding current user)
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, name, interests')
-      .neq('id', user.id)
-      .not('name', 'is', null)
-      .limit(10);
-
-    if (profiles && profiles.length > 0) {
-      const randomIndex = Math.floor(Math.random() * profiles.length);
-      const profile = profiles[randomIndex];
-      setCurrentRecipient({
-        id: profile.id,
-        name: profile.name || 'Anonymous',
-        interests: (profile.interests || []) as string[],
-      });
-    } else {
-      // Fallback to mock recipients if no other users
-      const randomIndex = Math.floor(Math.random() * MOCK_RECIPIENTS.length);
-      setCurrentRecipient(MOCK_RECIPIENTS[randomIndex]);
-    }
-  }, [user?.id]);
+    await assignNewRecipient(user.id);
+  }, [user?.id, assignNewRecipient]);
 
   const markPostcardsAsRead = useCallback(async () => {
     if (!user?.id) return;
@@ -340,7 +377,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!error) {
       setUser({ ...user, name, bio, photoUrl });
       setOnboardingStep('complete');
-      await assignNewRecipient();
+      await assignNewRecipient(user.id);
     }
   };
 
@@ -397,7 +434,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         sentAt: new Date(data.sent_at),
       };
       setPostcards((prev) => [newPostcard, ...prev]);
-      await assignNewRecipient();
+      if (user.id) {
+        await assignNewRecipient(user.id);
+      }
     }
   };
 
@@ -416,7 +455,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         postcards,
         addPostcard,
         currentRecipient,
-        assignNewRecipient,
+        assignNewRecipient: assignNewRecipientPublic,
         hasUnreadPostcards,
         markPostcardsAsRead,
         loading,
