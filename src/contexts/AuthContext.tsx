@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Load user profile from database
-  const loadUserProfile = async (userId: string) => {
+  const loadUserProfile = async (userId: string): Promise<boolean> => {
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('*')
@@ -95,7 +95,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await assignNewRecipient();
         await checkUnreadPostcards(userId);
       }
+      return true;
     }
+    
+    // Profile not found or error loading
+    if (error) {
+      console.error('Error loading user profile:', error);
+    }
+    return false;
   };
 
   // Check for unread postcards
@@ -234,7 +241,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // If session exists (email confirmation disabled), load the profile
     if (data.session) {
-      await loadUserProfile(data.user.id);
+      // Try to load profile, but if it fails, set user state manually
+      const profileLoaded = await loadUserProfile(data.user.id);
+      if (!profileLoaded) {
+        // Profile might not exist yet or failed to load, set user state manually
+        const newUser: User = {
+          id: data.user.id,
+          email: data.user.email || email,
+          name: '',
+          bio: '',
+          photoUrl: '',
+          interests: [],
+          createdAt: new Date(),
+        };
+        setUser(newUser);
+        setOnboardingStep('interests');
+      }
     } else {
       // Email confirmation required - set user state from auth data
       const newUser: User = {
