@@ -1,4 +1,4 @@
-import { useState, KeyboardEvent } from "react";
+import { useState, KeyboardEvent, useRef, useEffect } from "react";
 import { X, Camera, Home, User, FolderOpen, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,21 +17,36 @@ const LOGOUT_ICON = 'https://storage.googleapis.com/tempo-image-previews/figma-e
 
 export function Profile() {
   const navigate = useNavigate();
-  const { user, signOut, updateUserProfile, updateUserInterests, hasUnreadPostcards } = useAuth();
+  const { user, signOut, updateUserProfile, updateUserInterests, hasUnreadPostcards, uploadImage } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   // User data
-  const [editName, setEditName] = useState(user?.name || 'lisbet');
+  const [editName, setEditName] = useState(user?.name || '');
+  const [editBio, setEditBio] = useState(user?.bio || '');
+  const [editPhotoUrl, setEditPhotoUrl] = useState(user?.photoUrl || '');
   const [editInterests, setEditInterests] = useState<string[]>(
-    (user?.interests as string[]) || ['hiking', 'ceremics', 'reading']
+    (user?.interests as string[]) || []
   );
   const [newInterest, setNewInterest] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const displayName = user?.name || 'lisbet';
-  const username = '@llsbet3';
-  const email = user?.email || 'elizaveta.dobrydneva@gmail.com';
-  const interests = user?.interests || ['hiking', 'ceremics', 'reading'];
-  const memberSince = 'December 2025';
+  // Update local state when user changes
+  useEffect(() => {
+    if (user) {
+      setEditName(user.name || '');
+      setEditBio(user.bio || '');
+      setEditPhotoUrl(user.photoUrl || '');
+      setEditInterests((user.interests as string[]) || []);
+    }
+  }, [user]);
+
+  const displayName = user?.name || '';
+  const email = user?.email || '';
+  const bio = user?.bio || '';
+  const photoUrl = user?.photoUrl || '';
+  const interests = user?.interests || [];
+  const memberSince = user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : '';
 
   const handleRemoveInterest = (interestToRemove: string) => {
     setEditInterests(prev => prev.filter(i => i !== interestToRemove));
@@ -46,14 +61,37 @@ export function Profile() {
     }
   };
 
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && uploadImage) {
+      setIsUploadingAvatar(true);
+      try {
+        const url = await uploadImage(file);
+        if (url) {
+          setEditPhotoUrl(url);
+        }
+      } catch (error) {
+        console.error('Error uploading avatar:', error);
+      } finally {
+        setIsUploadingAvatar(false);
+      }
+    }
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
   const handleSave = () => {
-    updateUserProfile(editName, user?.bio || '', user?.photoUrl || '');
+    updateUserProfile(editName, editBio, editPhotoUrl);
     updateUserInterests(editInterests);
     setIsEditing(false);
   };
 
   const handleCancel = () => {
     setEditName(displayName);
+    setEditBio(bio);
+    setEditPhotoUrl(photoUrl);
     setEditInterests(interests as string[]);
     setIsEditing(false);
   };
@@ -132,12 +170,20 @@ export function Profile() {
 
               <div className="flex gap-8">
                 {/* Avatar */}
-                <div className="w-[120px] h-[120px] rounded-full border-2 border-[#312929] flex items-center justify-center flex-shrink-0">
-                  <img 
-                    src={USER_AVATAR_ICON} 
-                    alt="User avatar" 
-                    className="w-16 h-16 opacity-60"
-                  />
+                <div className="w-[120px] h-[120px] rounded-full border-2 border-[#312929] flex items-center justify-center flex-shrink-0 overflow-hidden bg-white">
+                  {photoUrl ? (
+                    <img 
+                      src={photoUrl} 
+                      alt="User avatar" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <img 
+                      src={USER_AVATAR_ICON} 
+                      alt="User avatar" 
+                      className="w-16 h-16 opacity-60"
+                    />
+                  )}
                 </div>
 
                 {/* User Info */}
@@ -147,10 +193,12 @@ export function Profile() {
                     {displayName}
                   </h2>
                   
-                  {/* Username */}
-                  <p className="text-[#8b7355] text-lg leading-7 mb-6">
-                    {username}
-                  </p>
+                  {/* Bio */}
+                  {bio && (
+                    <p className="text-[#312929] text-lg leading-7 mb-6">
+                      {bio}
+                    </p>
+                  )}
 
                   {/* Email */}
                   <div className="mb-6">
@@ -194,15 +242,39 @@ export function Profile() {
             <div className="flex gap-8">
               {/* Avatar with camera button */}
               <div className="relative flex-shrink-0">
-                <div className="w-[120px] h-[120px] rounded-full border-2 border-dashed border-[#312929] flex items-center justify-center">
-                  <img 
-                    src={USER_AVATAR_ICON} 
-                    alt="User avatar" 
-                    className="w-16 h-16 opacity-60"
-                  />
+                <div className="w-[120px] h-[120px] rounded-full border-2 border-dashed border-[#312929] flex items-center justify-center overflow-hidden bg-white">
+                  {editPhotoUrl ? (
+                    <img 
+                      src={editPhotoUrl} 
+                      alt="User avatar" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <img 
+                      src={USER_AVATAR_ICON} 
+                      alt="User avatar" 
+                      className="w-16 h-16 opacity-60"
+                    />
+                  )}
                 </div>
-                <button className="absolute bottom-0 right-0 w-8 h-8 bg-[#8b7355] rounded-full flex items-center justify-center">
-                  <Camera className="w-4 h-4 text-white" />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                  disabled={isUploadingAvatar}
+                />
+                <button
+                  onClick={handleAvatarClick}
+                  disabled={isUploadingAvatar}
+                  className="absolute bottom-0 right-0 w-8 h-8 bg-[#8b7355] rounded-full flex items-center justify-center cursor-pointer hover:bg-[#7a6a4a] transition-colors disabled:opacity-50"
+                >
+                  {isUploadingAvatar ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Camera className="w-4 h-4 text-white" />
+                  )}
                 </button>
               </div>
 
@@ -221,17 +293,18 @@ export function Profile() {
                   />
                 </div>
 
-                {/* Username */}
+                {/* Bio */}
                 <div>
                   <label className="font-indie-flower text-[#312929] text-2xl leading-8 block mb-1">
-                    Username:
+                    Bio:
                   </label>
-                  <p className="text-[#312929] text-lg leading-7">
-                    {username}
-                  </p>
-                  <p className="text-[#8b7355] text-sm leading-5 mt-1">
-                    Username cannot be changed
-                  </p>
+                  <textarea
+                    value={editBio}
+                    onChange={(e) => setEditBio(e.target.value)}
+                    placeholder="Tell us a little about yourself..."
+                    rows={3}
+                    className="font-indie-flower text-[#312929] text-lg leading-7 w-full border-b border-[#a9a8a8] bg-transparent py-2 focus:outline-none focus:border-[#312929] resize-none"
+                  />
                 </div>
 
                 {/* Email */}
