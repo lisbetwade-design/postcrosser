@@ -74,9 +74,8 @@ export function Dashboard() {
       setIsRolling(false);
       try {
         console.log('[Dashboard] Fetching new recipient for user:', user.id);
-        // Clear any existing recipient first
-        // Fetch a new random recipient - this will update currentRecipient state
-        await assignNewRecipient();
+        // Fetch a new recipient only if one doesn't exist, or force fetch
+        await assignNewRecipient(!currentRecipient);
         console.log('[Dashboard] assignNewRecipient completed - waiting for state update');
         // The useEffect will handle switching to recipient view when currentRecipient is set
       } catch (error) {
@@ -87,9 +86,32 @@ export function Dashboard() {
     }, 1500);
   };
 
-  const handleTryAgain = () => {
+  const handleTryAgain = async () => {
+    if (!user?.id) {
+      console.error('[Dashboard] Cannot try again without user');
+      return;
+    }
+    
+    // Clear current recipient and fetch a new one
+    console.log('[Dashboard] Try again - fetching new recipient');
+    setIsRolling(true);
+    setIsFetchingRecipient(true);
     setView('home');
-    setIsFetchingRecipient(false);
+    
+    // Roll animation for 1.5 seconds then fetch recipient
+    setTimeout(async () => {
+      setIsRolling(false);
+      try {
+        console.log('[Dashboard] Try again - fetching new recipient for user:', user.id);
+        // Force fetch a new recipient when trying again
+        await assignNewRecipient(true);
+        console.log('[Dashboard] assignNewRecipient completed - waiting for state update');
+      } catch (error) {
+        console.error('[Dashboard] Error assigning recipient:', error);
+        setIsFetchingRecipient(false);
+        setIsRolling(false);
+      }
+    }, 1500);
   };
 
   const handleCreatePostcard = () => {

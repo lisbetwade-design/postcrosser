@@ -16,7 +16,7 @@ interface AuthContextType {
   postcards: Postcard[];
   addPostcard: (postcard: Omit<Postcard, 'id' | 'createdAt' | 'sentAt'>) => Promise<void>;
   currentRecipient: Recipient | null;
-  assignNewRecipient: () => Promise<void>;
+  assignNewRecipient: (force?: boolean) => Promise<void>;
   hasUnreadPostcards: boolean;
   markPostcardsAsRead: () => Promise<void>;
   loading: boolean;
@@ -107,9 +107,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error('[AuthContext] Error fetching recipients:', queryError);
           console.error('[AuthContext] Error details:', JSON.stringify(queryError, null, 2));
           setCurrentRecipient(null);
-          return;
-        }
-        
+        return;
+      }
+
         profiles = queryResult;
       }
 
@@ -193,8 +193,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           console.log('[AuthContext] Profile complete, setting step to complete');
           setOnboardingStep('complete');
-          // Load recipient and check postcards in parallel, don't await
-          assignNewRecipient(userId).catch(err => console.error('[AuthContext] Error assigning recipient:', err));
+          // Only check postcards, don't auto-assign recipient - user must click "Send a postcard to..."
           checkUnreadPostcards(userId).catch(err => console.error('[AuthContext] Error checking postcards:', err));
         }
         return true;
@@ -239,8 +238,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await loadUserProfile(session.user.id);
         } else {
           console.log('[AuthContext] No session, resetting to signup');
-          setUser(null);
-          setOnboardingStep('signup');
+        setUser(null);
+        setOnboardingStep('signup');
         }
       } catch (error) {
         console.error('[AuthContext] Error in auth state change:', error);
@@ -263,10 +262,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         if (sessionError) {
           console.error('[AuthContext] Error getting session:', sessionError);
-          setLoading(false);
-          return;
-        }
-        
+        setLoading(false);
+        return;
+      }
+
         if (session?.user) {
           await loadUserProfile(session.user.id);
         } else {
@@ -331,14 +330,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user?.id, onboardingStep, loadPostcards]);
 
   // Public assignNewRecipient function (uses current user)
-  const assignNewRecipientPublic = useCallback(async () => {
+  // Only fetches a new recipient if one doesn't exist, or if force is true
+  const assignNewRecipientPublic = useCallback(async (force: boolean = false) => {
     if (!user?.id) {
       console.warn('[AuthContext] Cannot assign recipient without user');
       setCurrentRecipient(null);
       return;
     }
+    // If recipient already exists and not forcing, don't fetch again
+    if (currentRecipient && !force) {
+      console.log('[AuthContext] Recipient already exists, not fetching again:', currentRecipient.name);
+      return;
+    }
     await assignNewRecipient(user.id);
-  }, [user?.id, assignNewRecipient]);
+  }, [user?.id, assignNewRecipient, currentRecipient]);
 
   const markPostcardsAsRead = useCallback(async () => {
     if (!user?.id) return;
@@ -359,15 +364,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('[AuthContext] Set isSigningUpRef to true');
     
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
 
-      if (error) {
+    if (error) {
         console.error('[AuthContext] Sign up error:', error);
-        throw error;
-      }
+      throw error;
+    }
 
       if (!data.user) {
         throw new Error('User creation failed - no user data returned');
@@ -443,7 +448,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           createdAt: new Date(),
         };
         setUser(newUser);
-        setOnboardingStep('interests');
+    setOnboardingStep('interests');
         // Ensure loading is set to false
         console.log('[AuthContext] Signup complete (no session), setting loading to false');
         setLoading(false);
@@ -494,8 +499,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .eq('id', user.id);
 
     if (!error) {
-      setUser({ ...user, interests });
-      setOnboardingStep('profile');
+    setUser({ ...user, interests });
+    setOnboardingStep('profile');
     }
   };
 
@@ -508,9 +513,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .eq('id', user.id);
 
     if (!error) {
-      setUser({ ...user, name, bio, photoUrl });
-      setOnboardingStep('complete');
-      await assignNewRecipient(user.id);
+    setUser({ ...user, name, bio, photoUrl });
+    setOnboardingStep('complete');
+      // Don't auto-assign recipient - user must click "Send a postcard to..."
     }
   };
 
@@ -593,7 +598,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (user.id) {
         await loadPostcards(user.id);
         console.log('[AuthContext] Postcards reloaded from database');
-        await assignNewRecipient(user.id);
+        // Don't auto-assign new recipient - keep current recipient unless user clicks "Try again"
       }
     }
   }, [user, loadPostcards, assignNewRecipient]);

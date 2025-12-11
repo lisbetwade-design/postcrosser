@@ -150,9 +150,7 @@ export function Collection() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 + index * 0.05 }}
-                whileHover={{ scale: 1.02, y: -4 }}
-                onClick={() => setSelectedPostcard(postcard)}
-                className="cursor-pointer group"
+                className="group"
               >
                 {/* Postcard Stack Design */}
                 <div className="relative w-[375px] h-[280px]">
@@ -164,7 +162,7 @@ export function Collection() {
                     }}
                   >
                     <img
-                      src={TEMPLATES[postcard.templateId] || POSTCARD_IMAGE}
+                      src={postcard.imageUrl || TEMPLATES[postcard.templateId] || POSTCARD_IMAGE}
                       alt="Postcard"
                       className="w-full h-[242px] object-cover"
                     />
@@ -238,7 +236,7 @@ export function Collection() {
               >
                 <div className="relative">
                   <img
-                    src={TEMPLATES[selectedPostcard.templateId] || TEMPLATES.sunset}
+                    src={selectedPostcard.imageUrl || TEMPLATES[selectedPostcard.templateId] || TEMPLATES.sunset}
                     alt="Postcard"
                     className="w-full aspect-[4/3] object-cover"
                   />
@@ -292,8 +290,9 @@ export function Collection() {
                       <Button
                         onClick={() => {
                           setSelectedPostcard(null);
+                          // Only assign recipient if one doesn't exist
                           if (!currentRecipient) {
-                            assignNewRecipient();
+                            assignNewRecipient(false);
                           }
                           navigate('/create');
                         }}
