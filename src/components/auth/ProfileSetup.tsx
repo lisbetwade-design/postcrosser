@@ -1,4 +1,5 @@
 import { useState, useRef, ChangeEvent } from 'react';
+import { motion } from 'framer-motion';
 import { Loader2, Upload, Camera } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -145,20 +146,38 @@ export function ProfileSetup() {
       </div>
 
       {/* Right Side - Form */}
-      <div className="w-1/2 flex items-center justify-center px-12">
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="w-1/2 flex items-center justify-center px-12"
+      >
         <div className="w-full max-w-[517px]">
           {/* Title */}
-          <h1 className="font-indie-flower text-[#312929] text-5xl mb-4">
+          <motion.h1
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="font-indie-flower text-[#312929] text-5xl mb-4"
+          >
             Upload your picture
-          </h1>
+          </motion.h1>
 
           {/* Subtitle */}
-          <p className="text-[#312929] text-base mb-8 leading-5">
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-[#312929] text-base mb-8 leading-5"
+          >
             Add a profile picture so others can recognize you. You can also add your name and a short bio.
-          </p>
+          </motion.p>
 
           {/* Photo Upload Area */}
-          <div className="mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mb-8"
+          >
             <input
               type="file"
               ref={fileInputRef}
@@ -188,10 +207,15 @@ export function ProfileSetup() {
                 </>
               )}
             </button>
-          </div>
+          </motion.div>
 
           {/* Name field */}
-          <div className="mb-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mb-6"
+          >
             <label className="font-indie-flower text-[#312929] text-3xl block mb-2">
               name:
             </label>
@@ -203,10 +227,15 @@ export function ProfileSetup() {
               className="w-full h-12 bg-transparent border-0 border-b-2 border-[#a9a8a8] rounded-none px-0 text-xl focus:ring-0 focus:border-[#312929] focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors"
               required
             />
-          </div>
+          </motion.div>
 
           {/* Bio field */}
-          <div className="mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="mb-8"
+          >
             <label className="font-indie-flower text-[#312929] text-3xl block mb-2">
               bio:
             </label>
@@ -214,12 +243,17 @@ export function ProfileSetup() {
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="Tell us a little about yourself..."
-              className="w-full min-h-[80px] bg-transparent border-0 border-b-2 border-[#a9a8a8] rounded-none px-0 text-lg focus:ring-0 focus:border-[#312929] focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors resize-none"
+              className="w-full min-h-[80px] bg-transparent border-0 border-b-2 border-[#a9a8a8] rounded-none px-0 text-lg focus:ring-0 focus:border-[#312929] focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors               resize-none"
             />
-          </div>
+          </motion.div>
 
           {/* Submit Button */}
-          <Button
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <Button
             onClick={handleComplete}
             disabled={!name.trim() || isLoading}
             className="w-full h-14 bg-[#322a2a] hover:bg-[#322a2a]/90 text-white text-xl font-normal rounded-lg transition-all duration-200 disabled:opacity-50"
@@ -230,9 +264,15 @@ export function ProfileSetup() {
               "Complete profile"
             )}
           </Button>
+          </motion.div>
 
           {/* Back link */}
-          <div className="mt-6 text-center">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="mt-6 text-center"
+          >
             <button
               type="button"
               onClick={() => setOnboardingStep('interests')}
@@ -240,9 +280,9 @@ export function ProfileSetup() {
             >
               Back to interests
             </button>
-          </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

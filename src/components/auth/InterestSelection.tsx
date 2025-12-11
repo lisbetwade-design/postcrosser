@@ -1,4 +1,5 @@
 import { useState, KeyboardEvent } from 'react';
+import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -120,24 +121,45 @@ export function InterestSelection() {
       </div>
 
       {/* Right Side - Form */}
-      <div className="w-1/2 flex items-center justify-center px-12">
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="w-1/2 flex items-center justify-center px-12"
+      >
         <div className="w-full max-w-[517px]">
           {/* Title */}
-          <h1 className="font-indie-flower text-[#312929] text-5xl mb-4">
+          <motion.h1
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="font-indie-flower text-[#312929] text-5xl mb-4"
+          >
             What are your interests?
-          </h1>
+          </motion.h1>
 
           {/* Subtitle */}
-          <p className="text-[#312929] text-base mb-8 leading-5">
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-[#312929] text-base mb-8 leading-5"
+          >
             Add tags to help you connect with people who share your passions. Type and press Enter, or select from suggestions.
-          </p>
+          </motion.p>
 
           {/* Selected Tags */}
           {selectedInterests.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-6">
-              {selectedInterests.map((interest) => (
-                <div
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="flex flex-wrap gap-2 mb-6"
+            >
+              {selectedInterests.map((interest, index) => (
+                <motion.div
                   key={interest}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.1 + index * 0.05 }}
                   className="flex items-center gap-2 px-3 py-1 bg-[#322a2a] text-white rounded-full text-sm"
                 >
                   <span>{interest}</span>
@@ -147,13 +169,18 @@ export function InterestSelection() {
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           )}
 
           {/* Input field */}
-          <div className="mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mb-8"
+          >
             <Input
               type="text"
               value={inputValue}
@@ -162,19 +189,28 @@ export function InterestSelection() {
               placeholder="Horseback riding, hiking, watercolours..."
               className="w-full h-12 bg-transparent border-0 border-b-2 border-[#a9a8a8] rounded-none px-0 text-xl font-indie-flower text-[#312929] placeholder:text-[#a9a8a8] focus:ring-0 focus:border-[#312929] focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors"
             />
-          </div>
+          </motion.div>
 
           {/* Submit Button */}
-          <Button
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <Button
             onClick={handleContinue}
             disabled={selectedInterests.length < 1}
             className="w-full h-14 bg-[#322a2a] hover:bg-[#322a2a]/90 text-white text-xl font-normal rounded-lg transition-all duration-200 disabled:opacity-50"
           >
             Next: let's upload your picture
           </Button>
+          </motion.div>
 
           {/* Back to sign up link */}
-          <button
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
             onClick={() => {
               setOnboardingStep('signup');
               navigate('/signup');
@@ -182,9 +218,9 @@ export function InterestSelection() {
             className="w-full mt-4 text-[#312929] text-xl underline hover:opacity-70 transition-opacity"
           >
             Back to sign up
-          </button>
+          </motion.button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

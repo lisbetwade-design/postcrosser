@@ -1,4 +1,5 @@
 import { useState, KeyboardEvent, useRef, useEffect } from "react";
+import { motion } from "framer-motion";
 import { X, Camera, Home, User, FolderOpen, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -146,12 +147,21 @@ export function Profile() {
       {/* Main Content */}
       <main className="flex flex-col items-center justify-start min-h-screen pt-[128px] px-4">
         {/* Title */}
-        <h1 className="font-indie-flower text-[#312929] text-5xl mb-8 text-center">
+        <motion.h1
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="font-indie-flower text-[#312929] text-5xl mb-8 text-center"
+        >
           My Profile
-        </h1>
+        </motion.h1>
 
         {/* Profile Card */}
-        <div className="w-full max-w-[845px] bg-white rounded-lg shadow-md p-12 relative">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="w-full max-w-[845px] bg-white rounded-lg shadow-md p-12 relative"
+        >
           {!isEditing ? (
             /* View Mode */
             <>
@@ -366,10 +376,10 @@ export function Profile() {
                     Cancel
                   </button>
                 </div>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+        </motion.div>
       </main>
     </div>
   );

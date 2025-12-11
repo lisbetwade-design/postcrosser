@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -119,14 +120,28 @@ export function SignUpForm() {
       </div>
 
       {/* Right Side - Form */}
-      <div className="w-1/2 flex items-center justify-center px-12">
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="w-1/2 flex items-center justify-center px-12"
+      >
         <div className="w-full max-w-[450px]">
           {/* Title */}
-          <h1 className="font-indie-flower text-[#312929] text-6xl mb-12">
+          <motion.h1
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="font-indie-flower text-[#312929] text-6xl mb-12"
+          >
             {isSignIn ? 'Sign in' : 'Sign up'}
-          </h1>
+          </motion.h1>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <motion.form
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            onSubmit={handleSubmit}
+            className="space-y-6"
+          >
             {/* Name field - only for sign up */}
             {!isSignIn && (
               <div className="space-y-2">
@@ -211,7 +226,7 @@ export function SignUpForm() {
             </button>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

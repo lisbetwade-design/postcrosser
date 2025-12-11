@@ -1,4 +1,5 @@
 import { useState, useRef, ChangeEvent } from 'react';
+import { motion } from 'framer-motion';
 import { Upload, Home, User, FolderOpen, LogOut, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -146,9 +147,18 @@ export function PostcardCreator() {
 
       {/* Main Content - Two Card Layout */}
       <main className="flex items-center justify-center min-h-screen pt-[128px] pb-32 px-8">
-        <div className="flex gap-8 w-full max-w-[1200px]">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex gap-8 w-full max-w-[1200px]"
+        >
           {/* Left Card - Image Upload */}
-          <div className="flex-1 bg-white rounded-lg shadow-md p-8 min-h-[600px]">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+            className="flex-1 bg-white rounded-lg shadow-md p-8 min-h-[600px]"
+          >
             <input
               type="file"
               ref={fileInputRef}
@@ -181,22 +191,32 @@ export function PostcardCreator() {
                 <span className="font-inter text-[#a9a8a8] text-xs">JPEG, PNG, or WebP (max 10MB)</span>
               </button>
             )}
-          </div>
+          </motion.div>
 
           {/* Right Card - Message */}
-          <div className="flex-1 bg-white rounded-lg shadow-md p-8 min-h-[600px] flex flex-col">
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="flex-1 bg-white rounded-lg shadow-md p-8 min-h-[600px] flex flex-col"
+          >
             <Textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Write your message here..."
-              className="flex-1 w-full min-h-[550px] bg-transparent border-0 border-b border-[#a9a8a8] rounded-none px-0 py-2 text-base font-indie-flower text-[#312929] placeholder:text-[#a9a8a8] focus:ring-0 focus:border-[#312929] focus-visible:ring-0 focus-visible:ring-offset-0 transition-colors resize-none"
+              className="flex-1 w-full min-h-[550px] bg-transparent border-0 border-b border-[#a9a8a8] rounded-none px-0 py-2 text-base font-indie-flower text-[#312929] placeholder:text-[#a9a8a8] focus:ring-0 focus:border-[#312929] focus-visible:ring-0               focus-visible:ring-offset-0 transition-colors resize-none"
             />
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </main>
 
       {/* Bottom CTA Button */}
-      <div className="fixed bottom-8 left-0 right-0 flex justify-center">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="fixed bottom-8 left-0 right-0 flex justify-center"
+      >
         <Button
           onClick={handleSend}
           disabled={!isFormValid || isSending}
@@ -208,7 +228,7 @@ export function PostcardCreator() {
         >
           {isSending ? 'Sending...' : `Send postcard to ${recipientName}`}
         </Button>
-      </div>
+      </motion.div>
     </div>
   );
 }

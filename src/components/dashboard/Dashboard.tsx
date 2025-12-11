@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Home, User, FolderOpen, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -189,12 +190,21 @@ export function Dashboard() {
         {/* Main Content - Recipient Card */}
         <main className="flex flex-col items-center justify-center min-h-screen pt-[128px] px-4">
           {/* Title */}
-          <h1 className="font-indie-flower text-[#312929] text-5xl mb-8 text-center">
+          <motion.h1
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="font-indie-flower text-[#312929] text-5xl mb-8 text-center"
+          >
             Your postcard goes to...
-          </h1>
+          </motion.h1>
 
           {/* Recipient Card */}
-          <div className="w-full max-w-[750px] bg-white rounded-lg shadow-lg p-12 mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="w-full max-w-[750px] bg-white rounded-lg shadow-lg p-12 mb-8"
+          >
             <div className="flex gap-8">
               {/* Avatar */}
               <div className="w-[120px] h-[120px] rounded-full border-2 border-[#312929] flex items-center justify-center flex-shrink-0">
@@ -232,23 +242,32 @@ export function Dashboard() {
                 )}
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* CTA Button */}
-          <Button
-            onClick={handleCreatePostcard}
-            className="h-14 px-16 bg-[#322a2a] hover:bg-[#322a2a]/90 text-white text-2xl font-normal rounded-lg transition-all duration-200 mb-4"
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
           >
-            Create your postcard
-          </Button>
+            <Button
+              onClick={handleCreatePostcard}
+              className="h-14 px-16 bg-[#322a2a] hover:bg-[#322a2a]/90 text-white text-2xl font-normal rounded-lg transition-all duration-200 mb-4"
+            >
+              Create your postcard
+            </Button>
+          </motion.div>
 
           {/* Try again link */}
-          <button
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
             onClick={handleTryAgain}
             className="text-[#312929] text-2xl underline hover:opacity-70 transition-opacity"
           >
             Try again
-          </button>
+          </motion.button>
         </main>
       </div>
     );
@@ -305,12 +324,21 @@ export function Dashboard() {
       {/* Main Content */}
       <main className="flex flex-col items-center justify-center min-h-screen pt-[128px]">
         {/* Title */}
-        <h1 className="font-indie-flower text-[#312929] text-5xl mb-16 text-center">
+        <motion.h1
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="font-indie-flower text-[#312929] text-5xl mb-16 text-center"
+        >
           Hey, let's send a new postcard!
-        </h1>
+        </motion.h1>
 
         {/* Dice Images */}
-        <div className="relative w-[200px] h-[180px] mb-16">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="relative w-[200px] h-[180px] mb-16"
+        >
           <img 
             src={DICE_IMAGE_1} 
             alt="Dice 1" 
@@ -331,16 +359,22 @@ export function Dashboard() {
               animation: isRolling ? 'roll2 0.25s ease-in-out infinite' : 'none'
             }}
           />
-        </div>
+        </motion.div>
 
         {/* CTA Button */}
-        <Button
-          onClick={handleSendPostcard}
-          disabled={isRolling}
-          className="h-14 px-16 bg-[#322a2a] hover:bg-[#322a2a]/90 text-white text-2xl font-normal rounded-lg transition-all duration-200 disabled:opacity-70"
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
         >
-          {isRolling ? 'Rolling...' : 'Send a postcard to...'}
-        </Button>
+          <Button
+            onClick={handleSendPostcard}
+            disabled={isRolling}
+            className="h-14 px-16 bg-[#322a2a] hover:bg-[#322a2a]/90 text-white text-2xl font-normal rounded-lg transition-all duration-200 disabled:opacity-70"
+          >
+            {isRolling ? 'Rolling...' : 'Send a postcard to...'}
+          </Button>
+        </motion.div>
       </main>
 
       {/* CSS for dice rolling animation */}
