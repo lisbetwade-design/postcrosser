@@ -520,8 +520,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .eq('id', user.id);
 
     if (!error) {
-    setUser({ ...user, interests });
-    setOnboardingStep('profile');
+      setUser({ ...user, interests });
+      // Only change onboarding step if user is still in onboarding flow
+      // Don't change it if user is already authenticated and editing their profile
+      if (onboardingStep !== 'complete') {
+        setOnboardingStep('profile');
+      }
     }
   };
 
@@ -534,9 +538,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .eq('id', user.id);
 
     if (!error) {
-    setUser({ ...user, name, bio, photoUrl });
-    setOnboardingStep('complete');
-      // Don't auto-assign recipient - user must click "Send a postcard to..."
+      setUser({ ...user, name, bio, photoUrl });
+      // Only change onboarding step if user is still in onboarding flow
+      // Don't change it if user is already authenticated and editing their profile
+      if (onboardingStep !== 'complete') {
+        setOnboardingStep('complete');
+        // Don't auto-assign recipient - user must click "Send a postcard to..."
+      }
     }
   };
 
