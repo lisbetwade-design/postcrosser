@@ -623,6 +623,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setPostcards((prev) => [newPostcard, ...prev]);
       console.log('[AuthContext] Postcard added to local state');
       
+      // Trigger email notification (the database trigger will create the notification record)
+      // The actual email sending will be handled by a Supabase Edge Function or cron job
+      // For now, we'll try to send it immediately via a function call
+      try {
+        await sendPostcardEmailNotification(data.id, data.recipient_id, user.name);
+      } catch (emailError) {
+        // Don't fail the postcard creation if email fails
+        console.error('[AuthContext] Error sending email notification:', emailError);
+      }
+      
       // Reload postcards from database to ensure consistency
       if (user.id) {
         await loadPostcards(user.id);
