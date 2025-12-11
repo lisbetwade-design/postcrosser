@@ -570,6 +570,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return publicUrl;
   };
 
+  // Function to send email notification when a postcard is received
+  // This calls a Supabase Edge Function or uses Supabase's email service
+  const sendPostcardEmailNotification = async (postcardId: string, recipientId: string, senderName: string) => {
+    if (!supabase) return;
+
+    try {
+      // Get the pending email notification created by the trigger
+      const { data: notification, error: notifError } = await supabase
+        .from('email_notifications')
+        .select('*')
+        .eq('postcard_id', postcardId)
+        .eq('status', 'pending')
+        .single();
+
+      if (notifError || !notification) {
+        console.error('[AuthContext] No pending notification found:', notifError);
+        return;
+      }
+
+      // Call Supabase Edge Function to send email
+      // Replace 'send-postcard-email' with your actual Edge Function name
+      const { error: functionError } = await supabase.functions.invoke('send-postcard-email', {
+        body: {
+          notificationId: notification.id,
+          recipientEmail: notification.recipient_email,
+          recipientName: notification.recipient_name,
+          senderName: notification.sender_name,
+          postcardId: postcardId,
+        },
+      });
+
+      if (functionError) {
+        console.error('[AuthContext] Error calling email function:', functionError);
+        // Mark as failed
+        await supabase.rpc('mark_email_notification_failed', {
+          notification_id: notification.id,
+          error_msg: functionError.message,
+        });
+      } else {
+        // Mark as sent
+        await supabase.rpc('mark_email_notification_sent', {
+          notification_id: notification.id,
+        });
+      }
+    } catch (error) {
+      console.error('[AuthContext] Error in email notification:', error);
+    }
+  };
+
   const addPostcard = useCallback(async (postcard: Omit<Postcard, 'id' | 'createdAt' | 'sentAt'>) => {
     if (!user || !supabase) {
       console.error('[AuthContext] Cannot add postcard without user or supabase');
