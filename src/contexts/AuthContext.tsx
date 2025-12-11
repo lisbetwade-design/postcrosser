@@ -597,7 +597,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Call Supabase Edge Function to send email
-      // Replace 'send-postcard-email' with your actual Edge Function name
+      // Edge Function: send-postcard-email (deployed)
       const { error: functionError } = await supabase.functions.invoke('send-postcard-email', {
         body: {
           notificationId: notification.id,
