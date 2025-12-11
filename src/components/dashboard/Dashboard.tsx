@@ -17,14 +17,6 @@ const LOGOUT_ICON = 'https://storage.googleapis.com/tempo-image-previews/figma-e
 // User avatar icon
 const USER_AVATAR_ICON = 'https://storage.googleapis.com/tempo-image-previews/figma-exports%2Fuser_36OQnLpjYZWEuF92Ed0glKiLSBH-1765281265424-node-12%3A1165-1765281265106.png';
 
-// Mock recipient data
-const MOCK_RECIPIENT = {
-  name: 'lisbet',
-  username: '@llsbet3',
-  interests: ['hiking', 'ceremics', 'reading'],
-  bio: 'Short bio goes here.....',
-  memberSince: 'December 2025',
-};
 
 type DashboardView = 'home' | 'recipient';
 
@@ -54,7 +46,12 @@ export function Dashboard() {
 
   // Recipient view
   if (view === 'recipient') {
-    const recipient = currentRecipient || MOCK_RECIPIENT;
+    if (!currentRecipient) {
+      // If no recipient assigned, go back to home
+      setView('home');
+      return null;
+    }
+    const recipient = currentRecipient;
     
     return (
       <div className="w-full min-h-screen relative overflow-hidden">
@@ -125,44 +122,28 @@ export function Dashboard() {
               {/* User Info */}
               <div className="flex-1">
                 {/* Name */}
-                <h2 className="font-indie-flower text-[#312929] text-3xl leading-9 mb-1">
+                <h2 className="font-indie-flower text-[#312929] text-3xl leading-9 mb-6">
                   {recipient.name}
                 </h2>
-                
-                {/* Username */}
-                <p className="text-[#8b7355] text-lg leading-7 mb-6">
-                  {recipient.username}
-                </p>
 
                 {/* Interests */}
-                <div className="mb-6">
-                  <p className="font-indie-flower text-[#312929] text-xl leading-7 mb-3">
-                    Interests:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {recipient.interests.map((interest) => (
-                      <span
-                        key={interest}
-                        className="px-3 py-1 bg-[#322a2a] text-white text-sm font-inter rounded-full"
-                      >
-                        {interest}
-                      </span>
-                    ))}
+                {recipient.interests && recipient.interests.length > 0 && (
+                  <div className="mb-6">
+                    <p className="font-indie-flower text-[#312929] text-xl leading-7 mb-3">
+                      Interests:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {recipient.interests.map((interest) => (
+                        <span
+                          key={interest}
+                          className="px-3 py-1 bg-[#322a2a] text-white text-sm font-inter rounded-full"
+                        >
+                          {interest}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
-
-                {/* Bio */}
-                <p className="font-indie-flower text-[#312929] text-base leading-7 mb-6">
-                  {recipient.bio}
-                </p>
-
-                {/* Divider */}
-                <div className="w-full h-px bg-[#e5e5e5] mb-4" />
-
-                {/* Member since */}
-                <p className="text-[#8b7355] text-sm leading-5">
-                  Member since {recipient.memberSince}
-                </p>
+                )}
               </div>
             </div>
           </div>

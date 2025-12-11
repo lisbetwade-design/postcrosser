@@ -25,14 +25,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock recipients for demo
-const MOCK_RECIPIENTS: Recipient[] = [
-  { id: '1', name: 'Emma Thompson', interests: ['Travel', 'Photography', 'Art'] },
-  { id: '2', name: 'James Wilson', interests: ['Music', 'Books', 'Nature'] },
-  { id: '3', name: 'Sofia Garcia', interests: ['Cooking', 'Gardening', 'Crafts'] },
-  { id: '4', name: 'Liam Chen', interests: ['Technology', 'Gaming', 'Science'] },
-  { id: '5', name: 'Olivia Brown', interests: ['Fashion', 'Art', 'Movies'] },
-];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -70,19 +62,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const assignNewRecipient = useCallback(async (userId?: string) => {
     if (!userId) {
-      const randomIndex = Math.floor(Math.random() * MOCK_RECIPIENTS.length);
-      setCurrentRecipient(MOCK_RECIPIENTS[randomIndex]);
+      console.warn('[AuthContext] Cannot assign recipient without userId');
+      setCurrentRecipient(null);
       return;
     }
 
     try {
-      // Get a random user from the database (excluding current user)
-      const { data: profiles } = await supabase
+      // Get all users from the database (excluding current user)
+      // Get more users to have better randomization
+      const { data: profiles, error } = await supabase
         .from('profiles')
         .select('id, name, interests')
         .neq('id', userId)
         .not('name', 'is', null)
-        .limit(10);
+        .limit(100); // Get more users for better randomization
+
+      if (error) {
+        console.error('[AuthContext] Error fetching recipients:', error);
+        setCurrentRecipient(null);
+        return;
+      }
 
       if (profiles && profiles.length > 0) {
         const randomIndex = Math.floor(Math.random() * profiles.length);
@@ -92,16 +91,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           name: profile.name || 'Anonymous',
           interests: (profile.interests || []) as string[],
         });
+        console.log('[AuthContext] Assigned recipient:', profile.name);
       } else {
-        // Fallback to mock recipients if no other users
-        const randomIndex = Math.floor(Math.random() * MOCK_RECIPIENTS.length);
-        setCurrentRecipient(MOCK_RECIPIENTS[randomIndex]);
+        console.warn('[AuthContext] No other users found in database');
+        setCurrentRecipient(null);
       }
     } catch (error) {
-      console.error('Error assigning recipient:', error);
-      // Fallback to mock recipients on error
-      const randomIndex = Math.floor(Math.random() * MOCK_RECIPIENTS.length);
-      setCurrentRecipient(MOCK_RECIPIENTS[randomIndex]);
+      console.error('[AuthContext] Error assigning recipient:', error);
+      setCurrentRecipient(null);
     }
   }, []);
 
@@ -260,8 +257,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Public assignNewRecipient function (uses current user)
   const assignNewRecipientPublic = useCallback(async () => {
     if (!user?.id) {
-      const randomIndex = Math.floor(Math.random() * MOCK_RECIPIENTS.length);
-      setCurrentRecipient(MOCK_RECIPIENTS[randomIndex]);
+      console.warn('[AuthContext] Cannot assign recipient without user');
+      setCurrentRecipient(null);
       return;
     }
     await assignNewRecipient(user.id);
@@ -463,8 +460,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return publicUrl;
   };
 
-  const addPostcard = async (postcard: Omit<Postcard, 'id' | 'createdAt' | 'sentAt'>) => {
-    if (!user) return;
+  const addPostcard = useCallback(async (postcard: Omit<Postcard, 'id' | 'createdAt' | 'sentAt'>) => {
+    if (!user) {
+      console.error('[AuthContext] Cannot add postcard without user');
+      return;
+    }
+
+    console.log('[AuthContext] Adding postcard:', { 
+      senderId: user.id, 
+      recipientId: postcard.recipientId,
+      message: postcard.message?.substring(0, 50) + '...'
+    });
 
     const { data, error } = await supabase
       .from('postcards')
@@ -476,16 +482,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         image_url: postcard.imageUrl,
         stamp_id: postcard.stampId,
       })
-      .select()
+      .select(`
+        *,
+        sender:profiles!postcards_sender_id_fkey(name),
+        recipient:profiles!postcards_recipient_id_fkey(name)
+      `)
       .single();
 
-    if (!error && data) {
+    if (error) {
+      console.error('[AuthContext] Error adding postcard:', error);
+      throw error;
+    }
+
+    if (data) {
       const newPostcard: Postcard = {
         id: data.id,
         senderId: data.sender_id,
-        senderName: user.name,
+        senderName: data.sender?.name || user.name,
         recipientId: data.recipient_id,
-        recipientName: postcard.recipientName,
+        recipientName: data.recipient?.name || postcard.recipientName,
         templateId: data.template_id,
         message: data.message,
         imageUrl: data.image_url,
@@ -493,12 +508,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         createdAt: new Date(data.created_at),
         sentAt: new Date(data.sent_at),
       };
+      
+      // Update local state immediately
       setPostcards((prev) => [newPostcard, ...prev]);
+      console.log('[AuthContext] Postcard added to local state');
+      
+      // Reload postcards from database to ensure consistency
       if (user.id) {
+        await loadPostcards(user.id);
+        console.log('[AuthContext] Postcards reloaded from database');
         await assignNewRecipient(user.id);
       }
     }
-  };
+  }, [user, loadPostcards, assignNewRecipient]);
 
   return (
     <AuthContext.Provider
