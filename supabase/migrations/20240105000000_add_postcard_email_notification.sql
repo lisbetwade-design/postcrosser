@@ -81,3 +81,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Enable Row Level Security on email_notifications table
+ALTER TABLE email_notifications ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can read email notifications for postcards they sent or received
+CREATE POLICY "Users can read own email notifications"
+  ON email_notifications
+  FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM postcards
+      WHERE postcards.id = email_notifications.postcard_id
+      AND (postcards.sender_id = auth.uid() OR postcards.recipient_id = auth.uid())
+    )
+  );
+
+-- Policy: Allow service role to read all notifications (for Edge Functions)
+-- Note: Edge Functions use service role, so they can access all notifications
+-- This policy allows authenticated users to read their own notifications
+

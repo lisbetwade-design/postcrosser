@@ -584,6 +584,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       // Get the pending email notification created by the trigger
+      // Add a small delay to ensure the trigger has created the notification
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       const { data: notification, error: notifError } = await supabase
         .from('email_notifications')
         .select('*')
@@ -593,6 +596,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (notifError || !notification) {
         console.error('[AuthContext] No pending notification found:', notifError);
+        // If notification not found, it might be because:
+        // 1. RLS policies are blocking access (check migration was applied)
+        // 2. Trigger didn't fire (check database trigger exists)
+        // 3. Notification was already processed
         return;
       }
 
