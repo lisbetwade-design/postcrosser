@@ -214,7 +214,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Listen for auth state changes
   useEffect(() => {
     console.log('[AuthContext] Setting up auth state listener');
+    let mounted = true;
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      
       console.log('[AuthContext] Auth state change:', { event, hasSession: !!session, userId: session?.user?.id, isSigningUp: isSigningUpRef.current });
       try {
         // Skip SIGNED_IN event during signup - we handle it in signUp function
@@ -241,6 +245,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('[AuthContext] Error in auth state change:', error);
       } finally {
+        if (!mounted) return;
         // Only set loading to false if we're not in the middle of signup
         if (!isSigningUpRef.current) {
           console.log('[AuthContext] Setting loading to false (not signing up)');
@@ -253,11 +258,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Check initial session
     console.log('[AuthContext] Checking initial session');
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log('[AuthContext] Initial session check:', { hasSession: !!session, userId: session?.user?.id });
+    supabase.auth.getSession().then(async ({ data: { session }, error: sessionError }) => {
+      console.log('[AuthContext] Initial session check:', { hasSession: !!session, userId: session?.user?.id, error: sessionError });
       try {
+        if (sessionError) {
+          console.error('[AuthContext] Error getting session:', sessionError);
+          setLoading(false);
+          return;
+        }
+        
         if (session?.user) {
           await loadUserProfile(session.user.id);
+        } else {
+          console.log('[AuthContext] No session found, setting loading to false');
         }
       } catch (error) {
         console.error('[AuthContext] Error loading initial session:', error);
@@ -265,9 +278,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('[AuthContext] Initial session check complete, setting loading to false');
         setLoading(false);
       }
+    }).catch((error) => {
+      console.error('[AuthContext] Fatal error in getSession:', error);
+      setLoading(false);
     });
 
     return () => {
+      mounted = false;
       console.log('[AuthContext] Cleaning up auth state listener');
       subscription.unsubscribe();
     };
