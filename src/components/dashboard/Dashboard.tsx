@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Home, User, FolderOpen, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,30 +22,55 @@ type DashboardView = 'home' | 'recipient';
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { signOut, currentRecipient, assignNewRecipient, hasUnreadPostcards } = useAuth();
+  const { signOut, currentRecipient, assignNewRecipient, hasUnreadPostcards, user } = useAuth();
   const [isRolling, setIsRolling] = useState(false);
   const [view, setView] = useState<DashboardView>('home');
+  const [isFetchingRecipient, setIsFetchingRecipient] = useState(false);
+
+  // Watch for recipient assignment and switch to recipient view
+  useEffect(() => {
+    if (isFetchingRecipient && currentRecipient) {
+      console.log('[Dashboard] Recipient assigned, switching to recipient view:', currentRecipient.name);
+      setView('recipient');
+      setIsFetchingRecipient(false);
+    } else if (isFetchingRecipient && !currentRecipient) {
+      // If we're fetching but no recipient after a delay, there might be no other users
+      const timeout = setTimeout(() => {
+        console.warn('[Dashboard] No recipient assigned after fetch attempt');
+        setIsFetchingRecipient(false);
+        setIsRolling(false);
+      }, 2000);
+      return () => clearTimeout(timeout);
+    }
+  }, [currentRecipient, isFetchingRecipient]);
 
   const handleSendPostcard = async () => {
+    if (!user?.id) {
+      console.error('[Dashboard] Cannot send postcard without user');
+      return;
+    }
+
     setIsRolling(true);
-    // Roll animation for 1.5 seconds then fetch and show recipient
+    setIsFetchingRecipient(true);
+    
+    // Roll animation for 1.5 seconds then fetch recipient
     setTimeout(async () => {
       setIsRolling(false);
       try {
-        // Fetch a new random recipient before showing the recipient view
+        console.log('[Dashboard] Fetching new recipient for user:', user.id);
+        // Fetch a new random recipient
         await assignNewRecipient();
-        // Small delay to ensure state is updated
-        setTimeout(() => {
-          setView('recipient');
-        }, 100);
+        console.log('[Dashboard] assignNewRecipient completed');
       } catch (error) {
         console.error('[Dashboard] Error assigning recipient:', error);
+        setIsFetchingRecipient(false);
       }
     }, 1500);
   };
 
   const handleTryAgain = () => {
     setView('home');
+    setIsFetchingRecipient(false);
   };
 
   const handleCreatePostcard = () => {
