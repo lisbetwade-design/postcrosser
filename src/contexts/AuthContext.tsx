@@ -67,6 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    console.log('[AuthContext] Fetching random recipient for user:', userId);
     try {
       // Get all users from the database (excluding current user)
       // Get more users to have better randomization
@@ -83,15 +84,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      console.log('[AuthContext] Found', profiles?.length || 0, 'potential recipients');
+
       if (profiles && profiles.length > 0) {
-        const randomIndex = Math.floor(Math.random() * profiles.length);
+        // If there's only one user, select that one; otherwise pick randomly
+        const randomIndex = profiles.length === 1 ? 0 : Math.floor(Math.random() * profiles.length);
         const profile = profiles[randomIndex];
-        setCurrentRecipient({
+        const recipient = {
           id: profile.id,
           name: profile.name || 'Anonymous',
           interests: (profile.interests || []) as string[],
-        });
-        console.log('[AuthContext] Assigned recipient:', profile.name);
+        };
+        setCurrentRecipient(recipient);
+        console.log('[AuthContext] Successfully assigned recipient:', recipient.name, 'with', recipient.interests.length, 'interests');
       } else {
         console.warn('[AuthContext] No other users found in database');
         setCurrentRecipient(null);

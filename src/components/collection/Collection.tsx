@@ -208,22 +208,11 @@ export function Collection() {
             <h3 className="font-indie-flower text-2xl text-[#322a2a] mb-2">
               No postcards yet
             </h3>
-            <p className="text-[#8b7355] mb-6">
+            <p className="text-[#8b7355]">
               {filter === 'sent'
                 ? "You haven't sent any postcards yet"
                 : "You haven't received any postcards yet"}
             </p>
-            <Button
-              onClick={() => {
-                if (!currentRecipient) {
-                  assignNewRecipient();
-                }
-                navigate('/create');
-              }}
-              className="h-12 px-8 rounded-lg bg-[#322a2a] hover:bg-[#322a2a]/90 text-white"
-            >
-              Create Postcard
-            </Button>
           </motion.div>
         )}
 

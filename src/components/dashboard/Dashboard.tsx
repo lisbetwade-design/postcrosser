@@ -26,13 +26,21 @@ export function Dashboard() {
   const [isRolling, setIsRolling] = useState(false);
   const [view, setView] = useState<DashboardView>('home');
 
-  const handleSendPostcard = () => {
+  const handleSendPostcard = async () => {
     setIsRolling(true);
-    // Roll animation for 1.5 seconds then show recipient
-    setTimeout(() => {
+    // Roll animation for 1.5 seconds then fetch and show recipient
+    setTimeout(async () => {
       setIsRolling(false);
-      assignNewRecipient();
-      setView('recipient');
+      try {
+        // Fetch a new random recipient before showing the recipient view
+        await assignNewRecipient();
+        // Small delay to ensure state is updated
+        setTimeout(() => {
+          setView('recipient');
+        }, 100);
+      } catch (error) {
+        console.error('[Dashboard] Error assigning recipient:', error);
+      }
     }, 1500);
   };
 
