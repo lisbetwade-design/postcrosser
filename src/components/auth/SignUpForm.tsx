@@ -207,7 +207,7 @@ export function SignUpForm() {
                 'Create profile'
               )}
             </Button>
-          </form>
+          </motion.form>
 
           {/* Toggle Sign In/Sign Up */}
           <div className="mt-8 text-center">
