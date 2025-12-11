@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import type { User, OnboardingStep, InterestTag, Postcard, Recipient } from '@/types';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [postcards, setPostcards] = useState<Postcard[]>([]);
   const [currentRecipient, setCurrentRecipient] = useState<Recipient | null>(null);
   const [hasUnreadPostcards, setHasUnreadPostcards] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(isSupabaseConfigured);
   const isSigningUpRef = useRef<boolean>(false);
 
   // Debug logging
@@ -47,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Check for unread postcards
   const checkUnreadPostcards = useCallback(async (userId: string) => {
+    if (!supabase) return;
     try {
       const { count } = await supabase
         .from('postcards')
@@ -61,6 +62,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const assignNewRecipient = useCallback(async (userId?: string) => {
+    if (!supabase) {
+      setCurrentRecipient(null);
+      return;
+    }
     if (!userId) {
       console.warn('[AuthContext] Cannot assign recipient without userId');
       setCurrentRecipient(null);
@@ -160,6 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Load user profile from database
   const loadUserProfile = useCallback(async (userId: string): Promise<boolean> => {
+    if (!supabase) return false;
     console.log('[AuthContext] loadUserProfile called for userId:', userId);
     try {
       const { data: profile, error } = await supabase
@@ -212,6 +218,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Listen for auth state changes
   useEffect(() => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
     console.log('[AuthContext] Setting up auth state listener');
     let mounted = true;
     
@@ -291,6 +301,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Load postcards for user
   const loadPostcards = useCallback(async (userId: string) => {
+    if (!supabase) return;
     const { data: sentPostcards } = await supabase
       .from('postcards')
       .select(`
@@ -346,7 +357,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user?.id, assignNewRecipient, currentRecipient]);
 
   const markPostcardsAsRead = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id || !supabase) return;
     
     await supabase
       .from('postcards')
@@ -358,6 +369,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user?.id]);
 
   const signUp = async (email: string, password: string, name?: string) => {
+    if (!supabase) {
+      throw new Error('Supabase is not configured');
+    }
     console.log('[AuthContext] signUp called for email:', email, 'name:', name);
     // Set flag to prevent auth state change listener from interfering
     isSigningUpRef.current = true;
@@ -470,6 +484,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
+    if (!supabase) {
+      throw new Error('Supabase is not configured');
+    }
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -483,7 +500,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
     setUser(null);
     setOnboardingStep('signup');
     setCurrentRecipient(null);
@@ -491,7 +510,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateUserInterests = async (interests: InterestTag[]) => {
-    if (!user) return;
+    if (!user || !supabase) return;
 
     const { error } = await supabase
       .from('profiles')
@@ -505,7 +524,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateUserProfile = async (name: string, bio: string, photoUrl: string) => {
-    if (!user) return;
+    if (!user || !supabase) return;
 
     const { error } = await supabase
       .from('profiles')
@@ -520,7 +539,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const uploadImage = async (file: File): Promise<string | null> => {
-    if (!user) return null;
+    if (!user || !supabase) return null;
 
     const fileExt = file.name.split('.').pop();
     const fileName = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
@@ -542,8 +561,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addPostcard = useCallback(async (postcard: Omit<Postcard, 'id' | 'createdAt' | 'sentAt'>) => {
-    if (!user) {
-      console.error('[AuthContext] Cannot add postcard without user');
+    if (!user || !supabase) {
+      console.error('[AuthContext] Cannot add postcard without user or supabase');
       return;
     }
 
