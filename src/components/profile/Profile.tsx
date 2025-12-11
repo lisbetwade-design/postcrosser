@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { X, Camera, Home, User, FolderOpen, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/use-toast";
 
 // Feather pen icon
 const FEATHER_ICON = 'https://storage.googleapis.com/tempo-image-previews/figma-exports%2Fuser_36OQnLpjYZWEuF92Ed0glKiLSBH-1765311281940-node-29%3A1295-1765311281571.png';
@@ -19,8 +20,10 @@ const LOGOUT_ICON = 'https://storage.googleapis.com/tempo-image-previews/figma-e
 export function Profile() {
   const navigate = useNavigate();
   const { user, signOut, updateUserProfile, updateUserInterests, hasUnreadPostcards, uploadImage } = useAuth();
+  const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // User data
   const [editName, setEditName] = useState(user?.name || '');
@@ -83,10 +86,31 @@ export function Profile() {
     fileInputRef.current?.click();
   };
 
-  const handleSave = () => {
-    updateUserProfile(editName, editBio, editPhotoUrl);
-    updateUserInterests(editInterests);
-    setIsEditing(false);
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await updateUserProfile(editName, editBio, editPhotoUrl);
+      await updateUserInterests(editInterests);
+      
+      // Show success toast
+      toast({
+        title: 'Profile updated! ✨',
+        description: 'Your profile has been successfully updated.',
+        duration: 3000,
+      });
+      
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      toast({
+        title: 'Error updating profile',
+        description: 'There was a problem saving your changes. Please try again.',
+        variant: 'destructive',
+        duration: 3000,
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -365,9 +389,10 @@ export function Profile() {
                 <div className="flex gap-4 pt-4">
                   <button
                     onClick={handleSave}
-                    className="px-6 py-3 bg-[#322a2a] text-white text-sm rounded-lg hover:bg-[#322a2a]/90 transition-colors"
+                    disabled={isSaving}
+                    className="px-6 py-3 bg-[#322a2a] text-white text-sm rounded-lg hover:bg-[#322a2a]/90 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    Save Changes
+                    {isSaving ? 'Saving...' : 'Save Changes'}
                   </button>
                   <button
                     onClick={handleCancel}
