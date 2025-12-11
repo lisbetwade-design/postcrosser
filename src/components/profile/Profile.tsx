@@ -274,9 +274,13 @@ export function Profile() {
           ) : (
             /* Edit Mode */
             <div className="flex gap-8">
-              {/* Avatar with camera button */}
+              {/* Avatar */}
               <div className="relative flex-shrink-0">
-                <div className="w-[120px] h-[120px] rounded-full border-2 border-dashed border-[#312929] flex items-center justify-center overflow-hidden bg-white">
+                <button
+                  onClick={handleAvatarClick}
+                  disabled={isUploadingAvatar}
+                  className="w-[120px] h-[120px] rounded-full border-2 border-dashed border-[#312929] flex items-center justify-center overflow-hidden bg-white hover:border-[#8b7355] transition-colors disabled:opacity-50"
+                >
                   {editPhotoUrl ? (
                     <img 
                       src={editPhotoUrl} 
@@ -290,7 +294,12 @@ export function Profile() {
                       className="w-16 h-16 opacity-60"
                     />
                   )}
-                </div>
+                  {isUploadingAvatar && (
+                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                </button>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -299,17 +308,6 @@ export function Profile() {
                   className="hidden"
                   disabled={isUploadingAvatar}
                 />
-                <button
-                  onClick={handleAvatarClick}
-                  disabled={isUploadingAvatar}
-                  className="absolute bottom-0 right-0 w-8 h-8 bg-[#8b7355] rounded-full flex items-center justify-center cursor-pointer hover:bg-[#7a6a4a] transition-colors disabled:opacity-50"
-                >
-                  {isUploadingAvatar ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Camera className="w-4 h-4 text-white" />
-                  )}
-                </button>
               </div>
 
               {/* Edit Form */}
