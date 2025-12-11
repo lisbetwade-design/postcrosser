@@ -65,7 +65,8 @@ export function ProfileSetup() {
     if (name.trim()) {
       setIsLoading(true);
       try {
-        await updateUserProfile(name, bio, photoUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80');
+        // Allow empty photoUrl - user can proceed without uploading a picture
+        await updateUserProfile(name, bio, photoUrl || '');
       } catch (err) {
         console.error('Error updating profile:', err);
       } finally {
@@ -168,7 +169,7 @@ export function ProfileSetup() {
             transition={{ delay: 0.1 }}
             className="text-[#312929] text-base mb-8 leading-5"
           >
-            Add a profile picture so others can recognize you. You can also add your name and a short bio.
+            Add a profile picture so others can recognize you (optional). You can also add your name and a short bio.
           </motion.p>
 
           {/* Photo Upload Area */}
