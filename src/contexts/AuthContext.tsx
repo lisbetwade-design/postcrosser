@@ -69,27 +69,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     console.log('[AuthContext] Fetching random recipient for user:', userId);
     try {
+      // DIAGNOSTIC: First, check all profiles without filters
+      const { data: allProfiles, error: allError } = await supabase
+        .from('profiles')
+        .select('id, name, interests');
+      
+      console.log('[AuthContext] DIAGNOSTIC - All profiles in database:', {
+        count: allProfiles?.length || 0,
+        profiles: allProfiles?.map(p => ({ id: p.id, name: p.name, hasName: !!p.name })),
+        error: allError
+      });
+
+      // DIAGNOSTIC: Check profiles excluding current user
+      const { data: otherProfiles, error: otherError } = await supabase
+        .from('profiles')
+        .select('id, name, interests')
+        .neq('id', userId);
+      
+      console.log('[AuthContext] DIAGNOSTIC - Profiles excluding current user:', {
+        count: otherProfiles?.length || 0,
+        profiles: otherProfiles?.map(p => ({ id: p.id, name: p.name, hasName: !!p.name })),
+        error: otherError
+      });
+
       // Get all users from the database (excluding current user)
-      // Get more users to have better randomization
+      // Try without the name filter first to see if that's the issue
       const { data: profiles, error } = await supabase
         .from('profiles')
         .select('id, name, interests')
         .neq('id', userId)
-        .not('name', 'is', null)
-        .limit(100); // Get more users for better randomization
+        .limit(100);
+
+      console.log('[AuthContext] DIAGNOSTIC - Query result (without name filter):', {
+        count: profiles?.length || 0,
+        profiles: profiles?.map(p => ({ id: p.id, name: p.name, hasName: !!p.name })),
+        error: error
+      });
 
       if (error) {
         console.error('[AuthContext] Error fetching recipients:', error);
+        console.error('[AuthContext] Error details:', JSON.stringify(error, null, 2));
         setCurrentRecipient(null);
         return;
       }
 
-      console.log('[AuthContext] Found', profiles?.length || 0, 'potential recipients');
+      // Filter out users without names in JavaScript instead of SQL
+      const profilesWithNames = profiles?.filter(p => p.name && p.name.trim().length > 0) || [];
+      
+      console.log('[AuthContext] Found', profiles?.length || 0, 'total profiles');
+      console.log('[AuthContext] Found', profilesWithNames.length, 'profiles with names');
 
-      if (profiles && profiles.length > 0) {
+      if (profilesWithNames.length > 0) {
         // If there's only one user, select that one; otherwise pick randomly
-        const randomIndex = profiles.length === 1 ? 0 : Math.floor(Math.random() * profiles.length);
-        const profile = profiles[randomIndex];
+        const randomIndex = profilesWithNames.length === 1 ? 0 : Math.floor(Math.random() * profilesWithNames.length);
+        const profile = profilesWithNames[randomIndex];
         const recipient = {
           id: profile.id,
           name: profile.name || 'Anonymous',
@@ -98,11 +131,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setCurrentRecipient(recipient);
         console.log('[AuthContext] Successfully assigned recipient:', recipient.name, 'with', recipient.interests.length, 'interests');
       } else {
-        console.warn('[AuthContext] No other users found in database');
+        console.warn('[AuthContext] No other users found in database with names');
+        console.warn('[AuthContext] Available profiles:', profiles?.map(p => ({ id: p.id, name: p.name })));
         setCurrentRecipient(null);
       }
     } catch (error) {
       console.error('[AuthContext] Error assigning recipient:', error);
+      console.error('[AuthContext] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       setCurrentRecipient(null);
     }
   }, []);
