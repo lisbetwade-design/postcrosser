@@ -29,20 +29,35 @@ export function Dashboard() {
 
   // Watch for recipient assignment and switch to recipient view
   useEffect(() => {
+    console.log('[Dashboard] useEffect triggered:', { 
+      isFetchingRecipient, 
+      hasRecipient: !!currentRecipient, 
+      recipientName: currentRecipient?.name,
+      currentView: view
+    });
+    
     if (isFetchingRecipient && currentRecipient) {
       console.log('[Dashboard] Recipient assigned, switching to recipient view:', currentRecipient.name);
-      setView('recipient');
-      setIsFetchingRecipient(false);
-    } else if (isFetchingRecipient && !currentRecipient) {
-      // If we're fetching but no recipient after a delay, there might be no other users
+      // Small delay to ensure state is fully updated
+      setTimeout(() => {
+        setView('recipient');
+        setIsFetchingRecipient(false);
+      }, 200);
+    }
+  }, [currentRecipient, isFetchingRecipient, view]);
+
+  // Handle timeout if no recipient is found
+  useEffect(() => {
+    if (isFetchingRecipient && !currentRecipient) {
       const timeout = setTimeout(() => {
-        console.warn('[Dashboard] No recipient assigned after fetch attempt');
+        console.warn('[Dashboard] No recipient assigned after 3 seconds - checking if there are other users');
         setIsFetchingRecipient(false);
         setIsRolling(false);
-      }, 2000);
+        // Optionally show an error message or stay on home view
+      }, 3000);
       return () => clearTimeout(timeout);
     }
-  }, [currentRecipient, isFetchingRecipient]);
+  }, [isFetchingRecipient, currentRecipient]);
 
   const handleSendPostcard = async () => {
     if (!user?.id) {
@@ -50,6 +65,7 @@ export function Dashboard() {
       return;
     }
 
+    console.log('[Dashboard] handleSendPostcard called for user:', user.id);
     setIsRolling(true);
     setIsFetchingRecipient(true);
     
@@ -58,12 +74,15 @@ export function Dashboard() {
       setIsRolling(false);
       try {
         console.log('[Dashboard] Fetching new recipient for user:', user.id);
-        // Fetch a new random recipient
+        // Clear any existing recipient first
+        // Fetch a new random recipient - this will update currentRecipient state
         await assignNewRecipient();
-        console.log('[Dashboard] assignNewRecipient completed');
+        console.log('[Dashboard] assignNewRecipient completed - waiting for state update');
+        // The useEffect will handle switching to recipient view when currentRecipient is set
       } catch (error) {
         console.error('[Dashboard] Error assigning recipient:', error);
         setIsFetchingRecipient(false);
+        setIsRolling(false);
       }
     }, 1500);
   };
@@ -77,14 +96,26 @@ export function Dashboard() {
     navigate('/create');
   };
 
+  // Handle case where recipient view is set but no recipient yet
+  useEffect(() => {
+    if (view === 'recipient' && !currentRecipient && !isFetchingRecipient) {
+      console.log('[Dashboard] Recipient view but no currentRecipient, going back to home');
+      setView('home');
+    }
+  }, [view, currentRecipient, isFetchingRecipient]);
+
   // Recipient view
   if (view === 'recipient') {
     if (!currentRecipient) {
-      // If no recipient assigned, go back to home
-      setView('home');
-      return null;
+      // Show loading or go back to home
+      return (
+        <div className="w-full min-h-screen flex items-center justify-center">
+          <p className="text-[#312929]">Loading recipient...</p>
+        </div>
+      );
     }
     const recipient = currentRecipient;
+    console.log('[Dashboard] Rendering recipient view for:', recipient.name);
     
     return (
       <div className="w-full min-h-screen relative overflow-hidden">
