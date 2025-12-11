@@ -355,6 +355,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('[AuthContext] Recipient already exists, not fetching again:', currentRecipient.name);
       return;
     }
+    // If forcing, clear the current recipient first to ensure a new one is fetched
+    if (force) {
+      console.log('[AuthContext] Force fetch - clearing current recipient first');
+      setCurrentRecipient(null);
+      // Small delay to ensure state is cleared before fetching new one
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
     await assignNewRecipient(user.id);
   }, [user?.id, assignNewRecipient, currentRecipient]);
 

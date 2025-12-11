@@ -37,15 +37,24 @@ export function Dashboard() {
       currentView: view
     });
     
+    // If we're fetching and a recipient is assigned, switch to recipient view
     if (isFetchingRecipient && currentRecipient) {
       console.log('[Dashboard] Recipient assigned, switching to recipient view:', currentRecipient.name);
       // Small delay to ensure state is fully updated
       setTimeout(() => {
         setView('recipient');
         setIsFetchingRecipient(false);
+        setIsRolling(false);
       }, 200);
     }
-  }, [currentRecipient, isFetchingRecipient, view]);
+    
+    // If we're on home view but have a recipient and not fetching, switch to recipient view
+    // This handles the case where recipient was assigned but view didn't switch
+    if (view === 'home' && currentRecipient && !isFetchingRecipient && !isRolling) {
+      console.log('[Dashboard] Recipient exists but on home view, switching to recipient view');
+      setView('recipient');
+    }
+  }, [currentRecipient, isFetchingRecipient, view, isRolling]);
 
   // Handle timeout if no recipient is found
   useEffect(() => {
