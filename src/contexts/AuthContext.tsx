@@ -92,28 +92,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         error: otherError
       });
 
-      // Get all users from the database (excluding current user)
-      // Try without the name filter first to see if that's the issue
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('id, name, interests')
-        .neq('id', userId)
-        .limit(100);
+      // Use the otherProfiles from diagnostic query if available, otherwise query again
+      let profiles = otherProfiles;
+      
+      if (!profiles || profiles.length === 0) {
+        // If diagnostic query didn't work, try a simpler query
+        const { data: queryResult, error: queryError } = await supabase
+          .from('profiles')
+          .select('id, name, interests')
+          .neq('id', userId)
+          .limit(100);
 
-      console.log('[AuthContext] DIAGNOSTIC - Query result (without name filter):', {
-        count: profiles?.length || 0,
-        profiles: profiles?.map(p => ({ id: p.id, name: p.name, hasName: !!p.name })),
-        error: error
-      });
-
-      if (error) {
-        console.error('[AuthContext] Error fetching recipients:', error);
-        console.error('[AuthContext] Error details:', JSON.stringify(error, null, 2));
-        setCurrentRecipient(null);
-        return;
+        if (queryError) {
+          console.error('[AuthContext] Error fetching recipients:', queryError);
+          console.error('[AuthContext] Error details:', JSON.stringify(queryError, null, 2));
+          setCurrentRecipient(null);
+          return;
+        }
+        
+        profiles = queryResult;
       }
 
-      // Filter out users without names in JavaScript instead of SQL
+      console.log('[AuthContext] DIAGNOSTIC - Final profiles to choose from:', {
+        count: profiles?.length || 0,
+        profiles: profiles?.map(p => ({ id: p.id, name: p.name, hasName: !!p.name })),
+      });
+
+      // Filter out users without names in JavaScript
       const profilesWithNames = profiles?.filter(p => p.name && p.name.trim().length > 0) || [];
       
       console.log('[AuthContext] Found', profiles?.length || 0, 'total profiles');
@@ -129,10 +134,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           interests: (profile.interests || []) as string[],
         };
         setCurrentRecipient(recipient);
-        console.log('[AuthContext] Successfully assigned recipient:', recipient.name, 'with', recipient.interests.length, 'interests');
+        console.log('[AuthContext] ✅ Successfully assigned recipient:', recipient.name, 'with', recipient.interests.length, 'interests');
+      } else if (profiles && profiles.length > 0) {
+        // If we have profiles but no names, use the first one anyway
+        console.warn('[AuthContext] No profiles with names, using first available profile');
+        const profile = profiles[0];
+        const recipient = {
+          id: profile.id,
+          name: profile.name || 'Anonymous',
+          interests: (profile.interests || []) as string[],
+        };
+        setCurrentRecipient(recipient);
+        console.log('[AuthContext] ✅ Assigned recipient (no name):', recipient.id);
       } else {
-        console.warn('[AuthContext] No other users found in database with names');
-        console.warn('[AuthContext] Available profiles:', profiles?.map(p => ({ id: p.id, name: p.name })));
+        console.warn('[AuthContext] ❌ No other users found in database');
+        console.warn('[AuthContext] Available profiles from diagnostic:', allProfiles?.map(p => ({ id: p.id, name: p.name })));
         setCurrentRecipient(null);
       }
     } catch (error) {
