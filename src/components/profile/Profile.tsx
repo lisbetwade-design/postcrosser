@@ -1,6 +1,6 @@
 import { useState, KeyboardEvent, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { X, Camera, Home, User, FolderOpen, LogOut } from "lucide-react";
+import { X, Home, User, FolderOpen, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
