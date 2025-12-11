@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/components/ui/use-toast';
 
 // Feather pen icon
 const FEATHER_ICON = 'https://storage.googleapis.com/tempo-image-previews/figma-exports%2Fuser_36OQnLpjYZWEuF92Ed0glKiLSBH-1765311281940-node-29%3A1295-1765311281571.png';
@@ -14,6 +15,7 @@ const LOGOUT_ICON = 'https://storage.googleapis.com/tempo-image-previews/figma-e
 export function PostcardCreator() {
   const navigate = useNavigate();
   const { user, currentRecipient, addPostcard, signOut, hasUnreadPostcards, uploadImage } = useAuth();
+  const { toast } = useToast();
   const [message, setMessage] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -69,10 +71,25 @@ export function PostcardCreator() {
         stampId: 'heart',
       });
 
+      // Show success confirmation
+      toast({
+        title: 'Postcard sent! ✉️',
+        description: `Your postcard has been sent to ${currentRecipient.name}`,
+        duration: 3000,
+      });
+
       // Navigate back after sending
-      navigate('/');
+      setTimeout(() => {
+        navigate('/');
+      }, 500);
     } catch (err) {
       console.error('Error sending postcard:', err);
+      toast({
+        title: 'Error sending postcard',
+        description: 'There was a problem sending your postcard. Please try again.',
+        variant: 'destructive',
+        duration: 3000,
+      });
     } finally {
       setIsSending(false);
     }

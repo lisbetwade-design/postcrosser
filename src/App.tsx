@@ -9,6 +9,7 @@ import { PostcardCreator } from "@/components/postcard/PostcardCreator";
 import { Collection } from "@/components/collection/Collection";
 import { Profile } from "@/components/profile/Profile";
 import { Loader2 } from "lucide-react";
+import { Toaster } from "@/components/ui/toaster";
 
 function AppContent() {
   const { isAuthenticated, onboardingStep, user, loading } = useAuth();
@@ -69,6 +70,7 @@ function AppContent() {
         <Route path="/collection" element={<Collection />} />
         <Route path="/profile" element={<Profile />} />
       </Routes>
+      <Toaster />
     </>
   );
 }

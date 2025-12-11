@@ -244,8 +244,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         sentAt: new Date(p.sent_at),
       }));
       setPostcards(formattedPostcards);
+      
+      // Check for unread postcards after loading
+      await checkUnreadPostcards(userId);
     }
-  }, []);
+  }, [checkUnreadPostcards]);
 
   // Load postcards when user changes
   useEffect(() => {
