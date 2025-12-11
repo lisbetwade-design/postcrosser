@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // DIAGNOSTIC: First, check all profiles without filters
       const { data: allProfiles, error: allError } = await supabase
         .from('profiles')
-        .select('id, name, interests');
+        .select('id, name, interests, photo_url');
       
       console.log('[AuthContext] DIAGNOSTIC - All profiles in database:', {
         count: allProfiles?.length || 0,
@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // DIAGNOSTIC: Check profiles excluding current user
       const { data: otherProfiles, error: otherError } = await supabase
         .from('profiles')
-        .select('id, name, interests')
+        .select('id, name, interests, photo_url')
         .neq('id', userId);
       
       console.log('[AuthContext] DIAGNOSTIC - Profiles excluding current user:', {
@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // If diagnostic query didn't work, try a simpler query
         const { data: queryResult, error: queryError } = await supabase
           .from('profiles')
-          .select('id, name, interests')
+          .select('id, name, interests, photo_url')
           .neq('id', userId)
           .limit(100);
 
@@ -137,6 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: profile.id,
           name: profile.name || 'Anonymous',
           interests: (profile.interests || []) as string[],
+          photoUrl: profile.photo_url || undefined,
         };
         setCurrentRecipient(recipient);
         console.log('[AuthContext] ✅ Successfully assigned recipient:', recipient.name, 'with', recipient.interests.length, 'interests');
@@ -148,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: profile.id,
           name: profile.name || 'Anonymous',
           interests: (profile.interests || []) as string[],
+          photoUrl: profile.photo_url || undefined,
         };
         setCurrentRecipient(recipient);
         console.log('[AuthContext] ✅ Assigned recipient (no name):', recipient.id);
@@ -240,9 +242,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Skip TOKEN_REFRESHED events during signup
         if (event === 'TOKEN_REFRESHED' && isSigningUpRef.current) {
           console.log('[AuthContext] Skipping TOKEN_REFRESHED event during signup');
-          return;
-        }
-        
+        return;
+      }
+
         if (session?.user) {
           console.log('[AuthContext] Session found, loading profile for:', session.user.id);
           await loadUserProfile(session.user.id);
@@ -501,7 +503,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     if (supabase) {
-      await supabase.auth.signOut();
+    await supabase.auth.signOut();
     }
     setUser(null);
     setOnboardingStep('signup');

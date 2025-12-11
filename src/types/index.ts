@@ -26,6 +26,7 @@ export interface Recipient {
   id: string;
   name: string;
   interests: string[];
+  photoUrl?: string;
 }
 
 export type OnboardingStep = 'signup' | 'interests' | 'profile' | 'complete';

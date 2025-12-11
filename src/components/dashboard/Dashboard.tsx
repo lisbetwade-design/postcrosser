@@ -207,12 +207,20 @@ export function Dashboard() {
           >
             <div className="flex gap-8">
               {/* Avatar */}
-              <div className="w-[120px] h-[120px] rounded-full border-2 border-[#312929] flex items-center justify-center flex-shrink-0">
-                <img 
-                  src={USER_AVATAR_ICON} 
-                  alt="User avatar" 
-                  className="w-16 h-16 opacity-60"
-                />
+              <div className="w-[120px] h-[120px] rounded-full border-2 border-[#312929] flex items-center justify-center flex-shrink-0 overflow-hidden bg-white">
+                {recipient.photoUrl ? (
+                  <img 
+                    src={recipient.photoUrl} 
+                    alt={recipient.name} 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <img 
+                    src={USER_AVATAR_ICON} 
+                    alt="User avatar" 
+                    className="w-16 h-16 opacity-60"
+                  />
+                )}
               </div>
 
               {/* User Info */}
